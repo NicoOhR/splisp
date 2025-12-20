@@ -1,6 +1,9 @@
 add_library(splisp_lib STATIC
-  src/hello.cpp
+  src/lexer.cpp
 )
+
+find_package(Boost 1.74 REQUIRED)
+target_link_libraries(splisp_lib PRIVATE Boost::boost)
 
 target_include_directories(splisp_lib 
   PUBLIC 

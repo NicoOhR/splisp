@@ -1,8 +1,9 @@
 #include <iostream>
-#include "hello.hpp"
+#include <lexer.hpp>
+#include <string>
 
 int main() {
-  std::cout << message() << "\n";
+  std::string program = "(+ 3 3)";
+  Lexer lex(program);
   return 0;
 }
-
