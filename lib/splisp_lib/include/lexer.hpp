@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 enum TokenKind { ident, atoms, lparn, rparn };
@@ -19,4 +20,9 @@ public:
 
 private:
   std::vector<Token> tokenized;
+  const std::unordered_map<std::string, TokenKind> keywords = {
+      {"(", TokenKind::lparn},  {")", TokenKind::rparn},
+      {"+", TokenKind::ident},  {"-", TokenKind::ident},
+      {"*", TokenKind::ident},  {"/", TokenKind::ident},
+      {"#t", TokenKind::atoms}, {"#f", TokenKind::atoms}};
 };
