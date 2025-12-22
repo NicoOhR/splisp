@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -8,9 +9,10 @@ enum TokenKind { ident, atoms, lparn, rparn };
 
 struct Token {
   TokenKind kind;
-  std::string raw;
-  std::pair<uint32_t, uint32_t> span;
+  std::string lexeme;
 };
+
+void printToken(Token tok);
 
 class Lexer {
 public:
