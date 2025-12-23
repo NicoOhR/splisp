@@ -26,9 +26,11 @@ void printToken(Token tok) {
 }
 
 Lexer::Lexer(std::string program) {
+  // preprocess string
   boost::replace_all(program, "(", " ( ");
   boost::replace_all(program, ")", " ) ");
   boost::algorithm::trim(program);
+
   std::vector<std::string> words;
   boost::split(words, program, boost::is_space(), boost::token_compress_on);
   Token curr;
