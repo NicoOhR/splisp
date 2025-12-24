@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,8 +18,8 @@ void printToken(Token tok);
 class Lexer {
 public:
   Lexer(std::string program);
-  Token next();
-  Token peek() const;
+  std::optional<Token> next();
+  std::optional<Token> peek() const;
 
 private:
   std::vector<Token> tokenized;

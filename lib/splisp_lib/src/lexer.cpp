@@ -6,6 +6,7 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <iostream>
+#include <optional>
 #include <utility>
 
 void printToken(Token tok) {
@@ -23,6 +24,23 @@ void printToken(Token tok) {
     break;
   }
   std::cout << std::endl;
+}
+
+std::optional<Token> Lexer::next() {
+  if (this->tokenized.empty()) {
+    return std::nullopt;
+  }
+  Token tok = this->tokenized.front();
+  this->tokenized.erase(this->tokenized.begin());
+  return tok;
+}
+
+std::optional<Token> Lexer::peek() const {
+  if (this->tokenized.empty()) {
+    return std::nullopt;
+  }
+  Token tok = this->tokenized.front();
+  return tok;
 }
 
 Lexer::Lexer(std::string program) {
