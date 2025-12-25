@@ -1,5 +1,6 @@
 add_library(splisp_lib STATIC
   src/lexer.cpp
+  src/parser.cpp
 )
 
 find_package(Boost 1.74 REQUIRED)
@@ -14,5 +15,6 @@ target_compile_features(splisp_lib PUBLIC cxx_std_20)
 
 target_compile_options(splisp_lib PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+  -g
   $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive->
 )

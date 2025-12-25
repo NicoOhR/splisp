@@ -13,7 +13,7 @@ struct Symbol {
 struct SExp;
 
 struct List {
-  std::vector<std::unique_ptr<SExp>> List;
+  std::vector<std::unique_ptr<SExp>> list;
 };
 
 struct SExp {
@@ -23,7 +23,11 @@ struct SExp {
 class Parser {
 public:
   Parser(Lexer &lex);
+  void print_ast() const;
 
 private:
+  void print_sexp(const SExp &sexp) const;
+  std::unique_ptr<SExp> create_sexp(Lexer &lex);
+  List create_list(Lexer &lex);
   std::vector<std::unique_ptr<SExp>> AST;
 };
