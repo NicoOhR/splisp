@@ -1,10 +1,14 @@
 #include "lexer.hpp"
 #include <algorithm>
-#include <exception>
+#include <charconv>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <parser.hpp>
 #include <stdexcept>
+#include <stdlib.h>
 #include <utility>
 #include <variant>
 
@@ -45,16 +49,48 @@ Parser::Parser(Lexer &lex) {
   return;
 }
 
+std::optional<uint64_t> is_number(std::string str) {
+  int i{};
+  std::from_chars_result res =
+      std::from_chars(str.data(), str.data() + str.size(), i);
+  if (res.ec != std::errc{} or res.ptr != str.data() + str.size()) {
+    return std::nullopt;
+  }
+  return i;
+}
+
+std::optional<bool> is_bool(std::string str) {
+  if (str == "#t") {
+    return true;
+  } else if (str == "#f") {
+    return false;
+  } else {
+    return std::nullopt;
+  }
+}
+
 std::unique_ptr<SExp> Parser::create_sexp(Lexer &lex) {
   // function to construct a single s-exp
-  switch (lex.next().value().kind) {
+  Token next = lex.next().value();
+  switch (next.kind) {
   case (TokenKind::lparn): {
     SExp sexp = {.node = create_list(lex)};
     return std::make_unique<SExp>(std::move(sexp));
   }
   case (TokenKind::atoms): {
-    SExp sexp = {.node = Symbol("thing")};
-    return std::make_unique<SExp>(std::move(sexp));
+    SExp sexp;
+    auto num = is_number(next.lexeme);
+    if (num) {
+      sexp = {.node = Symbol(num.value())};
+      return std::make_unique<SExp>(std::move(sexp));
+    };
+    auto truthy = is_bool(next.lexeme);
+    if (truthy) {
+      sexp = {.node = Symbol(truthy.value())};
+      return std::make_unique<SExp>(std::move(sexp));
+    };
+    throw std::invalid_argument("invalid atom");
+    break;
   }
   case (TokenKind::rparn): {
     throw std::logic_error("mismatched parantheses");

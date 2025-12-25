@@ -4,7 +4,7 @@
 #include <string>
 
 int main() {
-  std::string program = "((+ 3 3) (* 1 2) (+ 1 1))";
+  std::string program = "(+ 3 3)";
   Lexer lex(program);
   Parser parser(lex);
   std::cout << "--+--" << std::endl;

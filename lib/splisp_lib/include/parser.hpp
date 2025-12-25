@@ -7,6 +7,7 @@
 #include <vector>
 
 struct Symbol {
+  // string variant primarily for debugging
   std::variant<std::string, std::uint64_t, bool> value;
 };
 
