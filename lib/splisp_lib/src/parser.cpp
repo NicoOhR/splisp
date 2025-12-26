@@ -12,27 +12,30 @@
 #include <utility>
 #include <variant>
 
+void Parser::print_symbol(const Symbol &sym) const {
+  std::visit(
+      [](const auto &v) {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, std::string>) {
+          std::cout << " " << v;
+        } else if constexpr (std::is_same_v<T, std::uint64_t>) {
+          std::cout << " " << v;
+        } else if constexpr (std::is_same_v<T, bool>) {
+          std::cout << (v ? " true " : " false ");
+        }
+      },
+      sym.value);
+}
+
 void Parser::print_sexp(const SExp &sexp) const {
   if (auto *lst = std::get_if<List>(&sexp.node)) {
-    std::cout << std::endl;
     for (const auto &ptr : lst->list) {
       if (ptr) {
         print_sexp(*ptr);
       }
     }
   } else if (auto *sym = std::get_if<Symbol>(&sexp.node)) {
-    std::visit(
-        [](const auto &v) {
-          using T = std::decay_t<decltype(v)>;
-          if constexpr (std::is_same_v<T, std::string>) {
-            std::cout << " " << v;
-          } else if constexpr (std::is_same_v<T, std::uint64_t>) {
-            std::cout << " " << v;
-          } else if constexpr (std::is_same_v<T, bool>) {
-            std::cout << (v ? " true " : " false ");
-          }
-        },
-        sym->value);
+    print_symbol(*sym);
   }
 }
 
@@ -49,7 +52,7 @@ Parser::Parser(Lexer &lex) {
   return;
 }
 
-std::optional<uint64_t> is_number(std::string str) {
+std::optional<uint64_t> Parser::is_number(std::string str) {
   int i{};
   std::from_chars_result res =
       std::from_chars(str.data(), str.data() + str.size(), i);
@@ -59,11 +62,20 @@ std::optional<uint64_t> is_number(std::string str) {
   return i;
 }
 
-std::optional<bool> is_bool(std::string str) {
+std::optional<bool> Parser::is_bool(std::string str) {
   if (str == "#t") {
     return true;
   } else if (str == "#f") {
     return false;
+  } else {
+    return std::nullopt;
+  }
+}
+
+std::optional<Keyword> Parser::is_keyword(std::string str) {
+  auto match = kwords.find(str);
+  if (match != kwords.end()) {
+    return match->second;
   } else {
     return std::nullopt;
   }
@@ -89,6 +101,11 @@ std::unique_ptr<SExp> Parser::create_sexp(Lexer &lex) {
       sexp = {.node = Symbol(truthy.value())};
       return std::make_unique<SExp>(std::move(sexp));
     };
+    auto kword = is_keyword(next.lexeme);
+    if (kword) {
+      sexp = {.node = Symbol(kword.value())};
+      return std::make_unique<SExp>(std::move(sexp));
+    }
     throw std::invalid_argument("invalid atom");
     break;
   }
@@ -97,10 +114,11 @@ std::unique_ptr<SExp> Parser::create_sexp(Lexer &lex) {
     break;
   }
   case (TokenKind::ident): {
-    SExp sexp = {.node = Symbol("operation")};
+    SExp sexp = {.node = Symbol(next.lexeme)};
     return std::make_unique<SExp>(std::move(sexp));
   }
   }
+  throw std::logic_error("strange construction");
 }
 
 List Parser::create_list(Lexer &lex) {
