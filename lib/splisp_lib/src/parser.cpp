@@ -15,7 +15,7 @@
 
 void Parser::print_symbol(const Symbol &sym, int level) const {
   std::visit(
-      [level](const auto &v) {
+      [level, this](const auto &v) {
         using T = std::decay_t<decltype(v)>;
         std::string stuff(level * 2, ' ');
         if constexpr (std::is_same_v<T, std::string>) {
@@ -23,22 +23,22 @@ void Parser::print_symbol(const Symbol &sym, int level) const {
         } else if constexpr (std::is_same_v<T, std::uint64_t>) {
           std::cout << stuff << "Int " << v;
         } else if constexpr (std::is_same_v<T, bool>) {
-          std::cout << stuff << "Bool " << (v ? " true " : " false ");
+          std::cout << stuff << "Bool " << (v ? "true" : "false");
         } else if constexpr (std::is_same_v<T, Keyword>) {
-          std::cout << stuff << "Keyword if";
+          std::cout << stuff << "Kword " << print_keyword(v);
         }
       },
       sym.value);
 }
 
 void Parser::print_sexp(const SExp &sexp, int level) const {
+  std::cout << std::endl;
   std::string stuff(level * 2, ' ');
   if (auto *lst = std::get_if<List>(&sexp.node)) {
-    std::cout << stuff << "List" << std::endl;
+    std::cout << stuff << "List";
     for (const auto &ptr : lst->list) {
       if (ptr) {
         print_sexp(*ptr, level + 1);
-        std::cout << std::endl;
       }
     }
   } else if (auto *sym = std::get_if<Symbol>(&sexp.node)) {
@@ -46,8 +46,23 @@ void Parser::print_sexp(const SExp &sexp, int level) const {
   }
 }
 
+std::string Parser::print_keyword(const Keyword kword) const {
+  switch (kword) {
+  case (Keyword::if_expr): {
+    return "if";
+  }
+  case (Keyword::define): {
+    return "define";
+  }
+  case (Keyword::lambda): {
+    return "lambda";
+  }
+  }
+  throw std::invalid_argument("Keyword not recogonized");
+}
+
 void Parser::print_ast() const {
-  std::cout << "AST" << std::endl;
+  std::cout << "AST";
   for (const auto &root : AST) {
     print_sexp(*root, 1);
   }

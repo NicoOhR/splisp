@@ -4,13 +4,7 @@
 #include <string>
 
 int main() {
-  // std::string program = "(((+ 3 3) (+ 3 4)) 1 2)";
-  std::string program = "(* 2 (+ 3 4))";
-  /*
-   * * 2
-   *    + 3 4
-   *
-   */
+  std::string program = "(if #t (+ 3 4) 5)";
   Lexer lex(program);
   Parser parser(lex);
   std::cout << "--+--" << std::endl;
