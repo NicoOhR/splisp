@@ -9,39 +9,47 @@
 #include <parser.hpp>
 #include <stdexcept>
 #include <stdlib.h>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
-void Parser::print_symbol(const Symbol &sym) const {
+void Parser::print_symbol(const Symbol &sym, int level) const {
   std::visit(
-      [](const auto &v) {
+      [level](const auto &v) {
         using T = std::decay_t<decltype(v)>;
+        std::string stuff(level * 2, ' ');
         if constexpr (std::is_same_v<T, std::string>) {
-          std::cout << " " << v;
+          std::cout << stuff << "Ident " << v;
         } else if constexpr (std::is_same_v<T, std::uint64_t>) {
-          std::cout << " " << v;
+          std::cout << stuff << "Int " << v;
         } else if constexpr (std::is_same_v<T, bool>) {
-          std::cout << (v ? " true " : " false ");
+          std::cout << stuff << "Bool " << (v ? " true " : " false ");
+        } else if constexpr (std::is_same_v<T, Keyword>) {
+          std::cout << stuff << "Keyword if";
         }
       },
       sym.value);
 }
 
-void Parser::print_sexp(const SExp &sexp) const {
+void Parser::print_sexp(const SExp &sexp, int level) const {
+  std::string stuff(level * 2, ' ');
   if (auto *lst = std::get_if<List>(&sexp.node)) {
+    std::cout << stuff << "List" << std::endl;
     for (const auto &ptr : lst->list) {
       if (ptr) {
-        print_sexp(*ptr);
+        print_sexp(*ptr, level + 1);
+        std::cout << std::endl;
       }
     }
   } else if (auto *sym = std::get_if<Symbol>(&sexp.node)) {
-    print_symbol(*sym);
+    print_symbol(*sym, level);
   }
 }
 
 void Parser::print_ast() const {
+  std::cout << "AST" << std::endl;
   for (const auto &root : AST) {
-    print_sexp(*root);
+    print_sexp(*root, 1);
   }
 }
 

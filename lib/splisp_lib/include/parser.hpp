@@ -29,8 +29,8 @@ public:
   void print_ast() const;
 
 private:
-  void print_sexp(const SExp &sexp) const;
-  void print_symbol(const Symbol &sym) const;
+  void print_sexp(const SExp &sexp, int level) const;
+  void print_symbol(const Symbol &sym, int level) const;
 
   std::unique_ptr<SExp> create_sexp(Lexer &lex);
   List create_list(Lexer &lex);
