@@ -6,8 +6,9 @@
 int main() {
   std::string program = "(if #t (+ 3 4) 5)";
   Lexer lex(program);
-  Parser parser(lex);
+  Parser parser(std::move(lex));
+  auto ast = parser.parse();
   std::cout << "--+--" << std::endl;
-  parser.print_ast();
+  ast::print_ast(ast);
   return 0;
 }

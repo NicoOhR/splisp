@@ -1,4 +1,5 @@
 add_library(splisp_lib STATIC
+  src/ast.cpp
   src/lexer.cpp
   src/parser.cpp
 )
