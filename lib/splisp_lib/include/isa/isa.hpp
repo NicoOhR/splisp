@@ -52,7 +52,7 @@ enum class OperationKind {
 };
 
 // information about each operation is described by the Spec struct and stored
-// in the spec_table
+// in the spec_list
 struct Spec {
   std::string mnemonic;
   OperandKind operand;
@@ -60,6 +60,7 @@ struct Spec {
   std::size_t pops;
   std::size_t pushes;
 };
+
 constexpr std::size_t op_count = static_cast<std::size_t>(Operation::HALT) + 1;
 inline constexpr std::array<Spec, op_count> spec_list{{
     {"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},

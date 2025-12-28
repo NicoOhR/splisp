@@ -5,9 +5,9 @@
 #include <string>
 #include <variant>
 
-#include "ast.hpp"
-#include "lexer.hpp"
-#include "parser.hpp"
+#include <frontend/ast.hpp>
+#include <frontend/lexer.hpp>
+#include <frontend/parser.hpp>
 
 namespace {
 

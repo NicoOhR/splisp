@@ -18,11 +18,22 @@ enum MachineState {
 
 class Stack {
   Stack(std::vector<ISA::Instruction> program);
-  MachineState runInstruction(ISA::Instruction);
+  // run instruction and handle state
+  void advanceProgram();
 
 private:
-  std::vector<ISA::Instruction> program_mem;
+  // dispatches to the handlers
+  MachineState runInstruction();
+
+  // I am almost certain there is a better way to proliferate
+  // the machine error that does not throw a program expection
+  MachineState handleArithmetic(ISA::Instruction);
+  MachineState handleLogic(ISA::Instruction);
+  MachineState handleTransfer(ISA::Instruction);
+  MachineState handleControl(ISA::Instruction);
+
   size_t pc = 0;
+  std::vector<ISA::Instruction> program_mem;
   std::stack<uint64_t> data_stack;
   std::stack<uint64_t> return_stack;
 };

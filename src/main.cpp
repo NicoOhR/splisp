@@ -1,6 +1,6 @@
-#include "parser.hpp"
+#include <frontend/lexer.hpp>
+#include <frontend/parser.hpp>
 #include <iostream>
-#include <lexer.hpp>
 #include <string>
 
 int main() {
