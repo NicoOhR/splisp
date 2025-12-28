@@ -25,12 +25,12 @@ private:
   // dispatches to the handlers
   MachineState runInstruction();
 
-  // I am almost certain there is a better way to proliferate
-  // the machine error that does not throw a program expection
-  MachineState handleArithmetic(ISA::Instruction, ISA::Spec);
-  MachineState handleLogic(ISA::Instruction, ISA::Spec);
-  MachineState handleTransfer(ISA::Instruction, ISA::Spec);
-  MachineState handleControl(ISA::Instruction, ISA::Spec);
+  // I am almost certain there is a better way to propagate
+  // the machine error that does not throw a program exception
+  MachineState handleArithmetic(ISA::Instruction instr, ISA::Spec spec);
+  MachineState handleLogic(ISA::Instruction instr, ISA::Spec spec);
+  MachineState handleTransfer(ISA::Instruction instr, ISA::Spec spec);
+  MachineState handleControl(ISA::Instruction instr, ISA::Spec spec);
 
   size_t pc = 0;
   std::vector<ISA::Instruction> program_mem;
