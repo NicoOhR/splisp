@@ -27,10 +27,10 @@ private:
 
   // I am almost certain there is a better way to proliferate
   // the machine error that does not throw a program expection
-  MachineState handleArithmetic(ISA::Instruction);
-  MachineState handleLogic(ISA::Instruction);
-  MachineState handleTransfer(ISA::Instruction);
-  MachineState handleControl(ISA::Instruction);
+  MachineState handleArithmetic(ISA::Instruction, ISA::Spec);
+  MachineState handleLogic(ISA::Instruction, ISA::Spec);
+  MachineState handleTransfer(ISA::Instruction, ISA::Spec);
+  MachineState handleControl(ISA::Instruction, ISA::Spec);
 
   size_t pc = 0;
   std::vector<ISA::Instruction> program_mem;
