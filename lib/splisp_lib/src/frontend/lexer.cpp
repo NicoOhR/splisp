@@ -1,4 +1,4 @@
-#include "lexer.hpp"
+#include <frontend/lexer.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/constants.hpp>

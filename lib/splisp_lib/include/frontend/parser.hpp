@@ -1,9 +1,9 @@
 #pragma once
 
 #include <algorithm>
-#include <ast.hpp>
+#include <frontend/ast.hpp>
 #include <cstdint>
-#include <lexer.hpp>
+#include <frontend/lexer.hpp>
 #include <memory>
 #include <variant>
 

@@ -1,0 +1,18 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <isa/isa.hpp>
+#include <stack>
+#include <vector>
+
+enum MachineState {};
+
+class Stack {
+
+private:
+  std::vector<Instruction> program_mem;
+  size_t pc = 0;
+  std::stack<uint64_t> data_stack;
+  std::stack<uint64_t> return_stack;
+};
