@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <list>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -99,7 +100,8 @@ inline constexpr std::array<Spec, op_count> spec_list{{
 }};
 
 struct Instruction {
-  Operation op;
-  std::optional<uint64_t> operand;
+  Operation op;                    // already a byte
+  std::optional<uint64_t> operand; // can be converted to a byte
+  std::array<uint8_t, 9> to_bytes() const;
 };
 } // namespace ISA
