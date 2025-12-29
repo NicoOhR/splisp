@@ -280,7 +280,9 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   case (ISA::Operation::FETCH): {
     auto add = static_cast<size_t>(data_stack.top());
     data_stack.pop();
-    uint8_t val = this->program_mem[add];
+    // fetch getting back the 16 bits is a little strange, not sure if I should
+    // switch the WORD of this VM to be 16 or just change FETCH
+    uint16_t val = (this->program_mem[add + 1] << 8 | this->program_mem[add]);
     data_stack.push(val);
     break;
   }

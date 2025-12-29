@@ -5,4 +5,4 @@ build:
   cmake --build build
 
 test: 
-  GTEST_COLOR=1 ctest --test-dir build --output-on-failure
+  GTEST_COLOR=1 ctest -VV --test-dir build --output-on-failure

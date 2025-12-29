@@ -25,8 +25,7 @@ Stack make_stack(ISA::Operation op, std::optional<uint64_t> operand = {}) {
   return Stack(std::move(program), std::move(data));
 }
 
-Stack make_stack_with_data(ISA::Operation op,
-                           std::optional<uint64_t> operand,
+Stack make_stack_with_data(ISA::Operation op, std::optional<uint64_t> operand,
                            std::vector<uint8_t> data) {
   ISA::Instruction instr{op, operand};
   std::vector<ISA::Instruction> program{instr};
@@ -43,6 +42,24 @@ TEST(StackTests, DispatchArithmeticAdd) {
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
   EXPECT_EQ(data.top(), 5U);
+}
+
+TEST(StackTests, DispatchArithmeticOpsCoarse) {
+  auto run_binary = [](ISA::Operation op, uint64_t b, uint64_t a) -> uint64_t {
+    auto stack = make_stack(op);
+    auto &data = StackTestAccess::data(stack);
+    data.push(b);
+    data.push(a);
+    auto state = StackTestAccess::runInstruction(stack);
+    // gtest functionality is not available inside lambdas
+    return data.top();
+  };
+
+  EXPECT_EQ(run_binary(ISA::Operation::ADD, 2, 3), 5U);
+  EXPECT_EQ(run_binary(ISA::Operation::SUB, 3, 10), 7U);
+  EXPECT_EQ(run_binary(ISA::Operation::MUL, 7, 6), 42U);
+  EXPECT_EQ(run_binary(ISA::Operation::DIV, 4, 20), 5U);
+  EXPECT_EQ(run_binary(ISA::Operation::MOD, 7, 20), 6U);
 }
 
 TEST(StackTests, DispatchLogicLt) {
@@ -77,50 +94,53 @@ TEST(StackTests, DispatchControlHalt) {
 TEST(StackTests, DispatchTransferRot) {
   auto stack = make_stack(ISA::Operation::ROT);
   auto &data = StackTestAccess::data(stack);
-  data.push(1);
-  data.push(2);
-  data.push(3);
+  const uint64_t a = 1;
+  const uint64_t b = 2;
+  const uint64_t c = 3;
+  data.push(c);
+  data.push(b);
+  data.push(a);
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 3U);
-  EXPECT_EQ(data.top(), 1U);
+  EXPECT_EQ(data.top(), b);
   data.pop();
-  EXPECT_EQ(data.top(), 3U);
+  EXPECT_EQ(data.top(), c);
   data.pop();
-  EXPECT_EQ(data.top(), 2U);
+  EXPECT_EQ(data.top(), a);
 }
 
 TEST(StackTests, DispatchTransferTuck) {
   auto stack = make_stack(ISA::Operation::TUCK);
   auto &data = StackTestAccess::data(stack);
-  data.push(7);
-  data.push(10);
-  data.push(20);
+  const uint64_t a = 20;
+  const uint64_t b = 10;
+  const uint64_t c = 7;
+  data.push(c);
+  data.push(b);
+  data.push(a);
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
-  ASSERT_EQ(data.size(), 4U);
-  EXPECT_EQ(data.top(), 20U);
+  ASSERT_EQ(data.size(), 3U);
+  EXPECT_EQ(data.top(), c);
   data.pop();
-  EXPECT_EQ(data.top(), 10U);
+  EXPECT_EQ(data.top(), a);
   data.pop();
-  EXPECT_EQ(data.top(), 20U);
-  data.pop();
-  EXPECT_EQ(data.top(), 7U);
+  EXPECT_EQ(data.top(), b);
 }
 
 TEST(StackTests, DispatchTransferFetch) {
   std::vector<uint8_t> mem{0x11, 0x22, 0x33};
-  auto stack =
-      make_stack_with_data(ISA::Operation::FETCH, std::nullopt, mem);
+  auto stack = make_stack_with_data(ISA::Operation::FETCH, std::nullopt, mem);
   auto &data = StackTestAccess::data(stack);
-  data.push(10);
+  data.push(9);
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.top(), 0x22U);
+  EXPECT_EQ(data.top(), 0x2211U);
 }
 
 } // namespace
