@@ -14,6 +14,10 @@ struct StackTestAccess {
   }
 
   static std::stack<uint64_t> &data(Stack &stack) { return stack.data_stack; }
+  static std::stack<uint64_t> &returns(Stack &stack) {
+    return stack.return_stack;
+  }
+  static size_t &pc(Stack &stack) { return stack.pc; }
 };
 
 namespace {
@@ -89,6 +93,76 @@ TEST(StackTests, DispatchControlHalt) {
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::HALT);
+}
+
+TEST(StackTests, DispatchControlWait) {
+  auto stack = make_stack(ISA::Operation::WAIT);
+  auto &data = StackTestAccess::data(stack);
+  data.push(5);
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(data.size(), 1U);
+}
+
+TEST(StackTests, DispatchControlJmp) {
+  auto stack = make_stack(ISA::Operation::JMP);
+  auto &data = StackTestAccess::data(stack);
+  data.push(7);
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(StackTestAccess::pc(stack), 7U);
+  EXPECT_EQ(data.size(), 0U);
+}
+
+TEST(StackTests, DispatchControlCjmpTaken) {
+  auto stack = make_stack(ISA::Operation::CJMP);
+  auto &data = StackTestAccess::data(stack);
+  data.push(9);
+  data.push(1);
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(StackTestAccess::pc(stack), 9U);
+  EXPECT_EQ(data.size(), 0U);
+}
+
+TEST(StackTests, DispatchControlCjmpNotTaken) {
+  auto stack = make_stack(ISA::Operation::CJMP);
+  auto &data = StackTestAccess::data(stack);
+  data.push(9);
+  data.push(0);
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(StackTestAccess::pc(stack), 0U);
+  EXPECT_EQ(data.size(), 0U);
+}
+
+TEST(StackTests, DispatchControlCall) {
+  auto stack = make_stack(ISA::Operation::CALL);
+  auto &data = StackTestAccess::data(stack);
+  auto &returns = StackTestAccess::returns(stack);
+  data.push(12);
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  ASSERT_EQ(returns.size(), 1U);
+  EXPECT_EQ(returns.top(), 0U);
+  EXPECT_EQ(StackTestAccess::pc(stack), 12U);
+  EXPECT_EQ(data.size(), 0U);
+}
+
+TEST(StackTests, DispatchControlRet) {
+  auto stack = make_stack(ISA::Operation::RET);
+  auto &returns = StackTestAccess::returns(stack);
+  returns.push(4);
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(StackTestAccess::pc(stack), 4U);
+  EXPECT_EQ(returns.size(), 0U);
 }
 
 TEST(StackTests, DispatchTransferRot) {

@@ -21,6 +21,7 @@ public:
   Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data);
   // run instruction and handle state
   void advanceProgram();
+  MachineState run_program(Stack &state, size_t max_steps);
 
 private:
   friend struct StackTestAccess;

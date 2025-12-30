@@ -27,10 +27,18 @@ uint64_t read_operand(const std::vector<uint8_t> &mem, size_t pc) {
 }
 
 void Stack::advanceProgram() {
-  MachineState state = runInstruction();
-  if (state == OKAY) {
-    this->pc += 9;
-  } else {
+  while (true) {
+    const auto prev_pc = this->pc;
+    const MachineState state = runInstruction();
+    if (state == OKAY) {
+      if (this->pc == prev_pc) {
+        this->pc += 9;
+      }
+      continue;
+    }
+    if (state == HALT) {
+      break;
+    }
     throw std::exception();
   }
 };
@@ -202,8 +210,8 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = data_stack.top();
     data_stack.pop();
-    data_stack.push(b);
     data_stack.push(a);
+    data_stack.push(b);
     break;
   }
   case (ISA::Operation::ROT): {
@@ -298,16 +306,19 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     auto dest = this->data_stack.top();
     data_stack.pop();
     this->pc = dest;
+    break;
   }
   case (ISA::Operation::RET): {
     auto dest = this->return_stack.top();
     this->return_stack.pop();
     this->pc = dest;
+    break;
   }
   case (ISA::Operation::JMP): {
     auto dest = this->data_stack.top();
     this->data_stack.pop();
     this->pc = dest;
+    break;
   }
   case (ISA::Operation::CJMP): {
     auto a = this->data_stack.top();
@@ -317,6 +328,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     if (a != 0) {
       this->pc = b;
     }
+    break;
   }
   case (ISA::Operation::WAIT): {
     return MachineState::OKAY;
@@ -328,4 +340,5 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     throw std::invalid_argument(
         "Non-control operation dispatched to control handler");
   }
+  return MachineState::OKAY;
 }
