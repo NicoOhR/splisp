@@ -12,5 +12,6 @@ public:
 private:
   ast::AST ast;
   std::vector<ISA::Instruction> lower_sexp(ast::SExp sexp);
-  ISA::Instruction emit(ISA::Operation op, std::optional<uint64_t> operand);
+  std::vector<ISA::Instruction> lower_symbol(ast::Symbol sym);
+  std::vector<ISA::Instruction> lower_list(ast::List list);
 };
