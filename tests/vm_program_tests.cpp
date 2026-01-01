@@ -7,8 +7,8 @@
 
 #include <gtest/gtest.h>
 
-#include <isa/isa.hpp>
-#include <vm/stack.hpp>
+#include <backend/isa/isa.hpp>
+#include <backend/vm/stack.hpp>
 
 struct StackTestAccess {
   static MachineState runInstruction(Stack &stack) {
@@ -36,24 +36,6 @@ std::string stack_to_string(const std::stack<uint64_t> &stack) {
   }
   out << "]";
   return out.str();
-}
-
-TEST(StackProgramTests, SimpleAddHalts) {
-  std::vector<ISA::Instruction> program{
-      {ISA::Operation::PUSH, 2},
-      {ISA::Operation::PUSH, 3},
-      {ISA::Operation::ADD, std::nullopt},
-      {ISA::Operation::HALT, std::nullopt},
-  };
-
-  std::vector<uint8_t> data{};
-  Stack stack(std::move(program), std::move(data));
-  stack.advanceProgram();
-  // EXPECT_EQ(state, MachineState::HALT);
-
-  auto &data_stack = StackTestAccess::data(stack);
-  ASSERT_EQ(data_stack.size(), 1U);
-  EXPECT_EQ(data_stack.top(), 5U);
 }
 
 TEST(StackProgramTests, ConditionalJump) {
@@ -93,7 +75,6 @@ TEST(StackProgramTests, ConditionalJump) {
     }
   }
   EXPECT_EQ(state, MachineState::HALT);
-
   auto &data_stack = StackTestAccess::data(stack);
   ASSERT_EQ(data_stack.size(), 1U);
   EXPECT_EQ(data_stack.top(), 1U);

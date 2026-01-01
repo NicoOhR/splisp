@@ -1,5 +1,5 @@
+#include <backend/isa/isa.hpp>
 #include <cstdint>
-#include <isa/isa.hpp>
 
 std::array<uint8_t, 9> ISA::Instruction::to_bytes() const {
   std::array<uint8_t, 9> ret{};

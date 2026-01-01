@@ -1,9 +1,9 @@
-#include <frontend/lexer.hpp>
 #include <charconv>
 #include <cstdint>
+#include <frontend/lexer.hpp>
+#include <frontend/parser.hpp>
 #include <memory>
 #include <optional>
-#include <frontend/parser.hpp>
 #include <stdexcept>
 #include <stdlib.h>
 #include <utility>

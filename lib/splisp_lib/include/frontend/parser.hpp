@@ -1,11 +1,9 @@
 #pragma once
 
-#include <algorithm>
-#include <frontend/ast.hpp>
 #include <cstdint>
+#include <frontend/ast.hpp>
 #include <frontend/lexer.hpp>
 #include <memory>
-#include <variant>
 
 using namespace ast;
 

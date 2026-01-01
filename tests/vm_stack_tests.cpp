@@ -5,8 +5,8 @@
 
 #include <gtest/gtest.h>
 
-#include <isa/isa.hpp>
-#include <vm/stack.hpp>
+#include <backend/isa/isa.hpp>
+#include <backend/vm/stack.hpp>
 
 struct StackTestAccess {
   static MachineState runInstruction(Stack &stack) {

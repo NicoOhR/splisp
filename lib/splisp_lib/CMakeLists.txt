@@ -2,8 +2,8 @@ add_library(splisp_lib STATIC
   src/frontend/ast.cpp
   src/frontend/lexer.cpp
   src/frontend/parser.cpp
-  src/vm/stack.cpp
-  src/isa/isa.cpp
+  src/backend/vm/stack.cpp
+  src/backend/isa/isa.cpp
 )
 
 find_package(Boost 1.74 REQUIRED)

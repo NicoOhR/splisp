@@ -1,11 +1,9 @@
-#include "isa/isa.hpp"
 #include <algorithm>
+#include <backend/vm/stack.hpp>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
 #include <list>
 #include <stdexcept>
-#include <vm/stack.hpp>
 
 Stack::Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data) {
   std::vector<uint8_t> program_bytes;
@@ -26,41 +24,41 @@ uint64_t read_operand(const std::vector<uint8_t> &mem, size_t pc) {
   return value;
 }
 
-void Stack::advanceProgram() {
-  while (true) {
+MachineState Stack::setState(MachineState next) {
+  this->machine_state = next;
+  return next;
+}
+
+MachineState Stack::run_program() {
+  this->machine_state = runInstruction();
+  while (this->machine_state == MachineState::OKAY) {
     const auto prev_pc = this->pc;
-    const MachineState state = runInstruction();
-    if (state == OKAY) {
-      if (this->pc == prev_pc) {
-        this->pc += 9;
-      }
-      continue;
+    if (this->pc == prev_pc) {
+      this->pc += 9;
     }
-    if (state == HALT) {
-      break;
-    }
-    throw std::exception();
+    continue;
   }
-};
+  return setState(this->machine_state);
+}
 
 MachineState Stack::runInstruction() {
   uint8_t curr = this->program_mem[this->pc];
   const auto spec = ISA::spec_list[curr];
   switch (spec.operation) {
   case (ISA::OperationKind::ARITHMETIC): {
-    return this->handleArithmetic(curr, spec);
+    return setState(this->handleArithmetic(curr, spec));
   }
   case (ISA::OperationKind::CONTROL): {
-    return this->handleControl(curr, spec);
+    return setState(this->handleControl(curr, spec));
   }
   case (ISA::OperationKind::TRANSFER): {
-    return this->handleTransfer(curr, spec);
+    return setState(this->handleTransfer(curr, spec));
   }
   case (ISA::OperationKind::LOGIC): {
-    return this->handleLogic(curr, spec);
+    return setState(this->handleLogic(curr, spec));
   }
   default:
-    return MachineState::INVALID_OP;
+    return setState(MachineState::INVALID_OP);
   }
 };
 
@@ -138,7 +136,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     throw std::invalid_argument(
         "Non-arithmatic operation dispatched to arithmetic handler");
   }
-  return MachineState::OKAY;
+  return setState(MachineState::OKAY);
 };
 MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
   switch (static_cast<ISA::Operation>(op)) {
@@ -186,7 +184,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     throw std::invalid_argument(
         "Non-logical operation dispatched to logic handler");
   }
-  return MachineState::OKAY;
+  return setState(MachineState::OKAY);
 };
 MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   const uint64_t operand = read_operand(this->program_mem, this->pc);
@@ -297,7 +295,7 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   default:
     throw std::invalid_argument("non-control operation handed to");
   }
-  return MachineState::OKAY;
+  return setState(MachineState::OKAY);
 }
 MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
   switch (static_cast<ISA::Operation>(op)) {
@@ -331,14 +329,14 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     break;
   }
   case (ISA::Operation::WAIT): {
-    return MachineState::OKAY;
+    return setState(MachineState::OKAY);
   }
   case (ISA::Operation::HALT): {
-    return MachineState::HALT;
+    return setState(MachineState::HALT);
   }
   default:
     throw std::invalid_argument(
         "Non-control operation dispatched to control handler");
   }
-  return MachineState::OKAY;
+  return setState(MachineState::OKAY);
 }
