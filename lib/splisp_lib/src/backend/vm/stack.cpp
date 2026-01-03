@@ -319,6 +319,10 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     break;
   }
   case (ISA::Operation::CJMP): {
+    // (condition)
+    // (location)
+    // so for if, the location is evaluated first and then the condition, this
+    // works roughly as evaluating the AST from the leaves up
     auto a = this->data_stack.top();
     this->data_stack.pop();
     auto b = this->data_stack.top();

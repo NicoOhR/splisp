@@ -49,16 +49,53 @@ void Generator::lower_symbol(const ast::Symbol &sym) {
       sym.value);
 }
 
-void Generator::lower_keyword(const ast::Keyword kword) {}
+void Generator::lower_keyword(const ast::List &list) {
+  if (const auto *head_symbol =
+          std::get_if<ast::Symbol>(&list.list.front()->node)) {
+    if (const auto *head_kword =
+            std::get_if<ast::Keyword>(&head_symbol->value)) {
+      switch (*head_kword) {
+      case (ast::Keyword::if_expr):
+        // List<Sexp(Keyword(if)), Sexp(cond), Sexp(then), Sexp(else)>
+        // 0. emit PUSH X (will calculate X)
+        // 1. emit condition to program vector
+        // 2. emit CJMP (note length here)
+        // 3. emit (else)
+        // 4. emit JMP Y (will calculate Y)
+        // 5. emit (then)
+        // X = length before (5), Y = length after (5)
+        this->program.push_back(ISA::Instruction{.op = ISA::Operation::PUSH});
+        size_t cjmp_idx =
+            this->program.size() - 1; // note the index of jump address
+        const auto &cond = *list.list[1];
+        lower_sexp(cond);
+        this->program.push_back(ISA::Instruction{.op = ISA::Operation::CJMP,
+                                                 .operand = std::nullopt});
+        const auto &else_code = *list.list[3];
+        lower_sexp(else_code);
+        this->program.push_back(ISA::Instruction{.op = ISA::Operation::PUSH});
+        size_t jmp_idx = this->program.size() - 1;
+        this->program.push_back(ISA::Instruction{.op = ISA::Operation::JMP,
+                                                 .operand = std::nullopt});
+        const auto &then_code = *list.list[2];
+        size_t X = (jmp_idx + 2) * 9;
+        lower_sexp(then_code);
+        size_t Y = (this->program.size()) * 9;
+        this->program[cjmp_idx].operand = X;
+        this->program[jmp_idx].operand = Y;
+      }
+    }
+  }
+}
 
-void Generator::lower_function(const std::string func) {}
+void Generator::lower_function(const ast::List &list) {}
 
 void Generator::lower_list(const ast::List &list) {
   /*
-   * if the list is nonempty, and the first is a keyword, then we interpret the
-   * rest of the list as a keyword dispatch
+   * if the list is nonempty, and the first is a keyword, then we interpret
+   * the rest of the list as a keyword dispatch
    *
-   * if the first is an operation, than we treat the rest of the least as a
+   * if the first is an operation, than we treat the rest of the list as a
    * function application dispatch
    *
    * otherwise it's just a list
@@ -66,17 +103,17 @@ void Generator::lower_list(const ast::List &list) {
   if (!list.list.empty()) {
     if (const auto *head_symbol =
             std::get_if<ast::Symbol>(&list.list.front()->node)) {
-      const auto *head_kword = std::get_if<ast::Keyword>(&head_symbol->value);
-      if (head_kword != nullptr) {
-        lower_keyword(*head_kword);
-        return;
+
+      if (const auto *head_kword =
+              std::get_if<ast::Keyword>(&head_symbol->value)) {
+        lower_keyword(list);
+      } else if (const auto *head_op =
+                     std::get_if<std::string>(&head_symbol->value)) {
+        lower_function(list);
       }
-    } else if (const auto *head_op =
-                   std::get_if<std::string>(&head_symbol->value)) {
-      lower_function(*head_op);
     }
   }
-  for (auto &sexp : list.list) {
-    lower_sexp(*sexp);
+  for (auto &list_sexp : list.list) {
+    lower_sexp(*list_sexp);
   }
 }
