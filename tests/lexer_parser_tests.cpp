@@ -42,7 +42,7 @@ TEST(LexerTests, BasicTokens) {
 
   auto second = lex.next();
   ASSERT_TRUE(second.has_value());
-  EXPECT_EQ(second->kind, TokenKind::ident);
+  EXPECT_EQ(second->kind, TokenKind::atoms);
   EXPECT_EQ(second->lexeme, "+");
 
   auto third = lex.next();
@@ -146,9 +146,17 @@ TEST(ParserTests, MismatchedParensThrows) {
   EXPECT_THROW((void)parser.parse(), std::logic_error);
 }
 
-TEST(ParserTests, InvalidAtomThrows) {
+TEST(ParserTests, UnknownAtomBecomesSymbol) {
   Parser parser(Lexer("foo"));
-  EXPECT_THROW((void)parser.parse(), std::invalid_argument);
+  ast::AST ast = parser.parse();
+
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+  const auto *sym = as_symbol(*ast[0]);
+  ASSERT_NE(sym, nullptr);
+  const auto *sym_name = std::get_if<std::string>(&sym->value);
+  ASSERT_NE(sym_name, nullptr);
+  EXPECT_EQ(*sym_name, "foo");
 }
 
 } // namespace

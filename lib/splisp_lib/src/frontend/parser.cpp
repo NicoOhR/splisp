@@ -73,7 +73,8 @@ std::unique_ptr<SExp> Parser::create_sexp() {
       sexp = {.node = Symbol{kword.value()}};
       return std::make_unique<SExp>(std::move(sexp));
     }
-    throw std::invalid_argument("invalid atom");
+    sexp = {.node = Symbol{next.lexeme}};
+    return std::make_unique<SExp>(std::move(sexp));
     break;
   }
   case (TokenKind::rparn): {

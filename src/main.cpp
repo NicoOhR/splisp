@@ -4,7 +4,7 @@
 #include <string>
 
 int main() {
-  std::string program = "(if #t (+ 3 4) 5)";
+  std::string program = "(if (< 2 3) (+ 3 4) 5)";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

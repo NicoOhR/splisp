@@ -1,10 +1,10 @@
-#include <frontend/lexer.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/constants.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
+#include <frontend/lexer.hpp>
 #include <iostream>
 #include <optional>
 #include <utility>
@@ -13,7 +13,7 @@ void printToken(Token tok) {
   std::cout << "Lexeme: " << tok.lexeme << " Kind: ";
   switch (tok.kind) {
   case (TokenKind::ident):
-    std::cout << "Ident";
+    std::cout << "Symbol";
     break;
   case (TokenKind::atoms):
     std::cout << " Atom";

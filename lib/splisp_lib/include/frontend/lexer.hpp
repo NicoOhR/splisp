@@ -22,8 +22,8 @@ public:
 private:
   std::vector<Token> tokenized;
   const std::unordered_map<std::string, TokenKind> keywords = {
-      {"(", TokenKind::lparn},  {")", TokenKind::rparn},
-      {"+", TokenKind::ident},  {"-", TokenKind::ident},
-      {"*", TokenKind::ident},  {"/", TokenKind::ident},
-      {"#t", TokenKind::atoms}, {"#f", TokenKind::atoms}};
+      {"(", TokenKind::lparn},
+      {")", TokenKind::rparn},
+      {"#t", TokenKind::atoms},
+      {"#f", TokenKind::atoms}};
 };
