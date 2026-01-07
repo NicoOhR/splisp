@@ -20,6 +20,10 @@ const ast::Symbol *as_symbol(const ast::SExp &sexp) {
   return std::get_if<ast::Symbol>(&sexp.node);
 }
 
+const ast::Function *as_function(const ast::SExp &sexp) {
+  return std::get_if<ast::Function>(&sexp.node);
+}
+
 const ast::SExp *list_item(const ast::List &list, std::size_t index) {
   if (index >= list.list.size() || list.list[index] == nullptr) {
     return nullptr;
@@ -157,6 +161,53 @@ TEST(ParserTests, UnknownAtomBecomesSymbol) {
   const auto *sym_name = std::get_if<std::string>(&sym->value);
   ASSERT_NE(sym_name, nullptr);
   EXPECT_EQ(*sym_name, "foo");
+}
+
+TEST(ParserTests, DefineCreatesFunctionNode) {
+  Parser parser(Lexer("(define add (x y) (+ x y))"));
+  ast::AST ast = parser.parse();
+
+  ast::print_ast(ast);
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+
+  const auto *func = as_function(*ast[0]);
+  ASSERT_NE(func, nullptr);
+  EXPECT_EQ(func->name, "add");
+
+  ASSERT_NE(func->args, nullptr);
+  const auto *args_list = as_list(*func->args);
+  ASSERT_NE(args_list, nullptr);
+  ASSERT_EQ(args_list->list.size(), 2U);
+
+  const auto *arg0 = list_item(*args_list, 0);
+  ASSERT_NE(arg0, nullptr);
+  const auto *arg0_sym = as_symbol(*arg0);
+  ASSERT_NE(arg0_sym, nullptr);
+  const auto *arg0_name = std::get_if<std::string>(&arg0_sym->value);
+  ASSERT_NE(arg0_name, nullptr);
+  EXPECT_EQ(*arg0_name, "x");
+
+  const auto *arg1 = list_item(*args_list, 1);
+  ASSERT_NE(arg1, nullptr);
+  const auto *arg1_sym = as_symbol(*arg1);
+  ASSERT_NE(arg1_sym, nullptr);
+  const auto *arg1_name = std::get_if<std::string>(&arg1_sym->value);
+  ASSERT_NE(arg1_name, nullptr);
+  EXPECT_EQ(*arg1_name, "y");
+
+  ASSERT_NE(func->body, nullptr);
+  const auto *body_list = as_list(*func->body);
+  ASSERT_NE(body_list, nullptr);
+  ASSERT_EQ(body_list->list.size(), 3U);
+
+  const auto *op_item = list_item(*body_list, 0);
+  ASSERT_NE(op_item, nullptr);
+  const auto *op_sym = as_symbol(*op_item);
+  ASSERT_NE(op_sym, nullptr);
+  const auto *op_name = std::get_if<std::string>(&op_sym->value);
+  ASSERT_NE(op_name, nullptr);
+  EXPECT_EQ(*op_name, "+");
 }
 
 } // namespace

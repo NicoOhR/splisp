@@ -4,6 +4,7 @@
 #include <frontend/ast.hpp>
 #include <frontend/lexer.hpp>
 #include <memory>
+#include <string>
 
 using namespace ast;
 
@@ -15,14 +16,18 @@ public:
 private:
   std::unique_ptr<SExp> create_sexp();
   List create_list();
+  void resolve_forms(SExp &rsexp);
+  ast::Function create_function(List &list);
+  ast::Lambda create_lambda(List &list);
 
   Lexer lex;
-  std::optional<Keyword> is_keyword(std::string str);
   std::optional<bool> is_bool(std::string str);
+  std::optional<Keyword> is_keyword(std::string str);
   std::optional<uint64_t> is_number(std::string str);
 
   const std::unordered_map<std::string, Keyword> kwords = {
       {"if", Keyword::if_expr},
+      {"let", Keyword::let},
       {"lambda", Keyword::lambda},
       {"define", Keyword::define}};
 };

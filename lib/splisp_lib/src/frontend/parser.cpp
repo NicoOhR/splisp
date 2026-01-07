@@ -1,11 +1,14 @@
+#include "frontend/ast.hpp"
 #include <charconv>
 #include <cstdint>
 #include <frontend/lexer.hpp>
 #include <frontend/parser.hpp>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <stdlib.h>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -15,6 +18,9 @@ AST Parser::parse() {
   AST ast;
   while (this->lex.peek()) {
     ast.push_back(create_sexp());
+  }
+  for (auto &sexp : ast) {
+    resolve_forms(*sexp);
   }
   return ast;
 }
@@ -87,6 +93,52 @@ std::unique_ptr<SExp> Parser::create_sexp() {
   }
   }
   throw std::logic_error("strange construction");
+}
+
+void Parser::resolve_forms(SExp &sexp) {
+  std::visit(
+      [this, &sexp](auto &p) {
+        using T = std::decay_t<decltype(p)>;
+        if constexpr (std::is_same_v<T, ast::Symbol>) {
+        }
+        if constexpr (std::is_same_v<T, List>) {
+          if (auto *sym = std::get_if<ast::Symbol>(&p.list.front()->node)) {
+            if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
+              switch (*kw) {
+              case (ast::Keyword::define): {
+                sexp.node = create_function(p);
+                return;
+                break;
+              }
+              default: {
+                break;
+              }
+              }
+            }
+          }
+        }
+      },
+      sexp.node);
+  return;
+}
+
+Function Parser::create_function(List &list) {
+  //(define name (args) (body))
+  Function ret;
+  if (auto name = ast::to_string(*list.list.at(1))) {
+    ret.name = name.value();
+  } else {
+    throw std::invalid_argument("Invalid function name");
+  }
+
+  if (auto args = std::get_if<ast::List>(&list.list.at(2)->node)) {
+    ret.args = std::move(list.list.at(2));
+  } else {
+    throw std::invalid_argument("Args Should be a List");
+  }
+
+  ret.body = std::move(list.list.at(3));
+  return ret;
 }
 
 List Parser::create_list() {

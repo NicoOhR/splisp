@@ -1,7 +1,19 @@
 #include <frontend/ast.hpp>
 #include <iostream>
+#include <optional>
+#include <string>
+#include <variant>
 
 namespace ast {
+
+std::optional<std::string> to_string(const SExp &sexp) {
+  if (const ast::Symbol *pval = std::get_if<Symbol>(&sexp.node)) {
+    if (const std::string *pstr = std::get_if<std::string>(&pval->value)) {
+      return *pstr;
+    }
+  }
+  return std::nullopt;
+};
 
 void print_symbol(const Symbol &sym, int level) {
   std::visit(
@@ -33,6 +45,14 @@ void print_sexp(const SExp &sexp, int level) {
     }
   } else if (auto *sym = std::get_if<Symbol>(&sexp.node)) {
     ast::print_symbol(*sym, level);
+  } else if (auto *func = std::get_if<Function>(&sexp.node)) {
+    std::cout << stuff << "Function " << func->name;
+    if (func->args) {
+      ast::print_sexp(*func->args, level + 1);
+    }
+    if (func->body) {
+      ast::print_sexp(*func->body, level + 1);
+    }
   }
 }
 
@@ -46,6 +66,9 @@ std::string print_keyword(const Keyword kword) {
   }
   case (Keyword::lambda): {
     return "lambda";
+  }
+  case (Keyword::let): {
+    return "let";
   }
   }
   throw std::invalid_argument("Keyword not recogonized");

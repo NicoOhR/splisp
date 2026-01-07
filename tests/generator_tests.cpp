@@ -60,8 +60,8 @@ TEST(GeneratorTests, IfEmitsJumpTargets) {
   const auto &program = GeneratorTestAccess::program(gen);
   ASSERT_EQ(program.size(), 7U);
 
-  const uint64_t then_index = 6;
-  const uint64_t end_index = 7;
+  const uint64_t then_index = 6 * 9;
+  const uint64_t end_index = 7 * 9;
 
   EXPECT_EQ(program[0].op, ISA::Operation::PUSH);
   EXPECT_EQ(program[0].operand, then_index);
