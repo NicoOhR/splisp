@@ -8,13 +8,15 @@
 struct symbol_table {
   size_t scope_id;
   std::unordered_map<std::string, uint64_t> symbols;
-  symbol_table &parent;
+  symbol_table *parent;
 };
 
 class Scoper {
 public:
+  Scoper();
   void run(ast::AST &ast);
   void resolve(ast::AST &ast);
+  void convert(ast::AST &ast);
 
 private:
   symbol_table table;

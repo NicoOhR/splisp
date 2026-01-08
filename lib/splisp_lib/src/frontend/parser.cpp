@@ -100,6 +100,7 @@ void Parser::resolve_forms(SExp &sexp) {
       [this, &sexp](auto &p) {
         using T = std::decay_t<decltype(p)>;
         if constexpr (std::is_same_v<T, ast::Symbol>) {
+          return;
         }
         if constexpr (std::is_same_v<T, List>) {
           if (auto *sym = std::get_if<ast::Symbol>(&p.list.front()->node)) {
@@ -108,7 +109,14 @@ void Parser::resolve_forms(SExp &sexp) {
               case (ast::Keyword::define): {
                 sexp.node = create_function(p);
                 return;
-                break;
+              }
+              case (ast::Keyword::lambda): {
+                sexp.node = create_lambda(p);
+                return;
+              }
+              case (ast::Keyword::let): {
+                sexp = create_let(p);
+                return;
               }
               default: {
                 break;
@@ -120,6 +128,19 @@ void Parser::resolve_forms(SExp &sexp) {
       },
       sexp.node);
   return;
+}
+
+ast::Function Parser::create_lambda(List &list) {
+  //(define (args) (body))
+  Function ret;
+  if (auto args = std::get_if<ast::List>(&list.list.at(2)->node)) {
+    ret.args = std::move(list.list.at(1));
+  } else {
+    throw std::invalid_argument("Args Should be a List");
+  }
+
+  ret.body = std::move(list.list.at(2));
+  return ret;
 }
 
 Function Parser::create_function(List &list) {
@@ -139,6 +160,38 @@ Function Parser::create_function(List &list) {
 
   ret.body = std::move(list.list.at(3));
   return ret;
+}
+
+SExp Parser::create_let(List &list) {
+  //(let ((x e1) (x e2)) (body)) <-> (lambda (x y) (body) (e1 e2))
+  // assumed form: List(Symbol(let) List(List(args)) SExp(Body))
+  // result after parsing List(Function(List(Args) SExp(body)) List(values))
+  List desugared;
+  SExp vars = {.node = List()};
+  SExp values = {.node = List()};
+  auto &vars_list = std::get<ast::List>(vars.node);
+  auto &values_list = std::get<ast::List>(values.node);
+
+  // construction of the vars and values list
+  if (List *args = std::get_if<ast::List>(&list.list.at(1)->node)) {
+    for (auto &arg : args->list) {
+      if (List *pair = std::get_if<ast::List>(&arg->node)) {
+        if (std::get_if<ast::Symbol>(&pair->list.at(0)->node)) {
+          vars_list.list.push_back(std::move(pair->list.at(0)));
+        }
+        if (std::get_if<ast::Symbol>(&pair->list.at(1)->node)) {
+          values_list.list.push_back(std::move(pair->list.at(1)));
+        }
+      }
+    }
+  }
+
+  Function fn;
+  fn.args = std::make_unique<SExp>(std::move(vars));
+  fn.body = std::move(list.list.at(2));
+  desugared.list.push_back(std::make_unique<SExp>(SExp{.node = std::move(fn)}));
+  desugared.list.push_back(std::make_unique<SExp>(std::move(values)));
+  return SExp{.node = std::move(desugared)};
 }
 
 List Parser::create_list() {

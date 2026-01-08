@@ -18,7 +18,8 @@ private:
   List create_list();
   void resolve_forms(SExp &rsexp);
   ast::Function create_function(List &list);
-  ast::Lambda create_lambda(List &list);
+  ast::Function create_lambda(List &list);
+  ast::SExp create_let(List &list);
 
   Lexer lex;
   std::optional<bool> is_bool(std::string str);

@@ -46,7 +46,8 @@ void print_sexp(const SExp &sexp, int level) {
   } else if (auto *sym = std::get_if<Symbol>(&sexp.node)) {
     ast::print_symbol(*sym, level);
   } else if (auto *func = std::get_if<Function>(&sexp.node)) {
-    std::cout << stuff << "Function " << func->name;
+    func->name ? std::cout << stuff << "Function " << func->name.value()
+               : std::cout << "Lambda" << std::endl;
     if (func->args) {
       ast::print_sexp(*func->args, level + 1);
     }

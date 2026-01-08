@@ -210,4 +210,71 @@ TEST(ParserTests, DefineCreatesFunctionNode) {
   EXPECT_EQ(*op_name, "+");
 }
 
+TEST(ParserTests, LetDesugarsToFunctionCall) {
+  Parser parser(Lexer("(let ((x 1) (y 2)) (+ x y))"));
+  ast::AST ast = parser.parse();
+  ast::print_ast(ast);
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+
+  const auto *list = as_list(*ast[0]);
+  ASSERT_NE(list, nullptr);
+  ASSERT_EQ(list->list.size(), 2U);
+
+  const auto *fn_item = list_item(*list, 0);
+  ASSERT_NE(fn_item, nullptr);
+  const auto *fn = as_function(*fn_item);
+  ASSERT_NE(fn, nullptr);
+
+  ASSERT_NE(fn->args, nullptr);
+  const auto *args_list = as_list(*fn->args);
+  ASSERT_NE(args_list, nullptr);
+  ASSERT_EQ(args_list->list.size(), 2U);
+
+  const auto *arg0 = list_item(*args_list, 0);
+  ASSERT_NE(arg0, nullptr);
+  const auto *arg0_sym = as_symbol(*arg0);
+  ASSERT_NE(arg0_sym, nullptr);
+  const auto *arg0_name = std::get_if<std::string>(&arg0_sym->value);
+  ASSERT_NE(arg0_name, nullptr);
+  EXPECT_EQ(*arg0_name, "x");
+
+  const auto *arg1 = list_item(*args_list, 1);
+  ASSERT_NE(arg1, nullptr);
+  const auto *arg1_sym = as_symbol(*arg1);
+  ASSERT_NE(arg1_sym, nullptr);
+  const auto *arg1_name = std::get_if<std::string>(&arg1_sym->value);
+  ASSERT_NE(arg1_name, nullptr);
+  EXPECT_EQ(*arg1_name, "y");
+
+  ASSERT_NE(fn->body, nullptr);
+  const auto *body_list = as_list(*fn->body);
+  ASSERT_NE(body_list, nullptr);
+  ASSERT_EQ(body_list->list.size(), 3U);
+
+  const auto *values_item = list_item(*list, 1);
+  ASSERT_NE(values_item, nullptr);
+  const auto *values_list = as_list(*values_item);
+  ASSERT_NE(values_list, nullptr);
+  ASSERT_EQ(values_list->list.size(), 2U);
+
+  const auto *val0 = list_item(*values_list, 0);
+  ASSERT_NE(val0, nullptr);
+  const auto *val0_sym = as_symbol(*val0);
+  ASSERT_NE(val0_sym, nullptr);
+  const auto *val0_num = std::get_if<std::uint64_t>(&val0_sym->value);
+  ASSERT_NE(val0_num, nullptr);
+  EXPECT_EQ(*val0_num, 1U);
+
+  const auto *val1 = list_item(*values_list, 1);
+  ASSERT_NE(val1, nullptr);
+  const auto *val1_sym = as_symbol(*val1);
+  ASSERT_NE(val1_sym, nullptr);
+  const auto *val1_num = std::get_if<std::uint64_t>(&val1_sym->value);
+  ASSERT_NE(val1_num, nullptr);
+  EXPECT_EQ(*val1_num, 2U);
+
+  ast::print_ast(ast);
+}
+
 } // namespace

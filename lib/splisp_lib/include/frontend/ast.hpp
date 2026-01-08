@@ -17,13 +17,7 @@ struct Symbol {
 struct SExp;
 
 struct Function {
-  std::string name;
-  size_t scope_id;
-  std::unique_ptr<SExp> args;
-  std::unique_ptr<SExp> body;
-};
-
-struct Lambda {
+  std::optional<std::string> name;
   size_t scope_id;
   std::unique_ptr<SExp> args;
   std::unique_ptr<SExp> body;
@@ -34,7 +28,7 @@ struct List {
 };
 
 struct SExp {
-  std::variant<List, Symbol, Function, Lambda> node;
+  std::variant<List, Symbol, Function> node;
 };
 
 using AST = std::vector<std::unique_ptr<SExp>>;
