@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <frontend/lexer.hpp>
 #include <frontend/parser.hpp>
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -162,7 +161,7 @@ ast::List Parser::create_lambda(List &list) {
 }
 
 List Parser::create_define(List &list) {
-  //(define name (args) (body))
+  // assumed form (define name (args) (body))
   //(define (name args) (body)) -> (define name (lambda (args) (body)))
   if (list.list.size() < 3) {
     throw std::invalid_argument("Define requires a name and body");
@@ -204,8 +203,8 @@ List Parser::create_define(List &list) {
   }
 
   List lambda_list;
-  lambda_list.list.push_back(std::make_unique<SExp>(
-      SExp{.node = Symbol{Keyword::lambda}}));
+  lambda_list.list.push_back(
+      std::make_unique<SExp>(SExp{.node = Symbol{Keyword::lambda}}));
   lambda_list.list.push_back(std::move(args));
   lambda_list.list.push_back(std::move(body));
 
@@ -242,8 +241,8 @@ SExp Parser::create_let(List &list) {
   }
 
   List lambda_list;
-  lambda_list.list.push_back(std::make_unique<SExp>(
-      SExp{.node = Symbol{Keyword::lambda}}));
+  lambda_list.list.push_back(
+      std::make_unique<SExp>(SExp{.node = Symbol{Keyword::lambda}}));
   lambda_list.list.push_back(std::make_unique<SExp>(std::move(vars)));
   lambda_list.list.push_back(std::move(list.list.at(2)));
   desugared.list.push_back(

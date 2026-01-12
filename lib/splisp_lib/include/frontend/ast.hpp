@@ -10,11 +10,11 @@
 namespace ast {
 enum Keyword { if_expr, let, lambda, define };
 
+struct SExp;
+
 struct Symbol {
   std::variant<Keyword, std::string, std::uint64_t, bool> value;
 };
-
-struct SExp;
 
 struct List {
   std::vector<std::unique_ptr<SExp>> list;

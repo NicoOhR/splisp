@@ -48,6 +48,16 @@ using Top = std::variant<Define, Expr>;
 
 using Program = std::vector<Top>;
 
-Program from_ast(ast::AST);
+Top lower_top(const ast::SExp &sexp);
+
+Define lower_definition(const ast::SExp &sexp);
+Expr lower_expr(const ast::SExp &sexp);
+
+Const lower_const(const ast::SExp &sexp);
+Var lower_var(const ast::SExp &sexp);
+Apply lower_apply(const ast::SExp &sexp);
+Lambda lower_lambda(const ast::SExp &sexp);
+Cond lower_condition(const ast::SExp &sexp);
+Program from_ast(const ast::AST &ast);
 
 } // namespace core

@@ -8,8 +8,8 @@
 #include <backend/vm/stack.hpp>
 
 struct GeneratorTestAccess {
-  static void lower_keyword(Generator &gen, const ast::List &list) {
-    gen.lower_keyword(list);
+  static void emit_keyword(Generator &gen, const ast::List &list) {
+    gen.emit_keyword(list);
   }
 
   static const std::vector<ISA::Instruction> &program(const Generator &gen) {
@@ -55,7 +55,7 @@ TEST(GeneratorTests, IfEmitsJumpTargets) {
 
   ast::AST empty_ast;
   Generator gen(empty_ast);
-  GeneratorTestAccess::lower_keyword(gen, if_list);
+  GeneratorTestAccess::emit_keyword(gen, if_list);
 
   const auto &program = GeneratorTestAccess::program(gen);
   ASSERT_EQ(program.size(), 7U);
@@ -94,7 +94,7 @@ TEST(GeneratorTests, IfRunsOnVm) {
 
   ast::AST empty_ast;
   Generator gen(empty_ast);
-  GeneratorTestAccess::lower_keyword(gen, if_list);
+  GeneratorTestAccess::emit_keyword(gen, if_list);
 
   auto program = GeneratorTestAccess::program(gen);
   program.push_back(ISA::Instruction{.op = ISA::Operation::HALT});
