@@ -103,26 +103,42 @@ void Parser::resolve_forms(SExp &sexp) {
           return;
         }
         if constexpr (std::is_same_v<T, List>) {
-          if (auto *sym = std::get_if<ast::Symbol>(&p.list.front()->node)) {
-            if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
-              switch (*kw) {
-              case (ast::Keyword::define): {
-                sexp.node = create_function(p);
-                return;
-              }
-              case (ast::Keyword::lambda): {
-                sexp.node = create_lambda(p);
-                return;
-              }
-              case (ast::Keyword::let): {
-                sexp = create_let(p);
-                return;
-              }
-              default: {
-                break;
-              }
+          if (!p.list.empty()) {
+            if (auto *sym = std::get_if<ast::Symbol>(&p.list.front()->node)) {
+              if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
+                switch (*kw) {
+                case (ast::Keyword::define): {
+                  sexp.node = create_define(p);
+                  if (auto *list = std::get_if<ast::List>(&sexp.node)) {
+                    for (auto &elem : list->list) {
+                      resolve_forms(*elem);
+                    }
+                  }
+                  return;
+                }
+                case (ast::Keyword::lambda): {
+                  sexp.node = create_lambda(p);
+                  if (auto *list = std::get_if<ast::List>(&sexp.node)) {
+                    for (auto &elem : list->list) {
+                      resolve_forms(*elem);
+                    }
+                  }
+                  return;
+                }
+                case (ast::Keyword::let): {
+                  sexp = create_let(p);
+                  resolve_forms(sexp);
+                  return;
+                }
+                default: {
+                  break;
+                }
+                }
               }
             }
+          }
+          for (auto &elem : p.list) {
+            resolve_forms(*elem);
           }
         }
       },
@@ -130,42 +146,81 @@ void Parser::resolve_forms(SExp &sexp) {
   return;
 }
 
-ast::Function Parser::create_lambda(List &list) {
-  //(define (args) (body))
-  Function ret;
-  if (auto args = std::get_if<ast::List>(&list.list.at(2)->node)) {
-    ret.args = std::move(list.list.at(1));
-  } else {
+ast::List Parser::create_lambda(List &list) {
+  //(lambda (args) (body))
+  if (list.list.size() < 3) {
+    throw std::invalid_argument("Lambda requires args and body");
+  }
+  if (!std::get_if<ast::List>(&list.list.at(1)->node)) {
     throw std::invalid_argument("Args Should be a List");
   }
-
-  ret.body = std::move(list.list.at(2));
+  List ret;
+  ret.list.push_back(std::move(list.list.at(0)));
+  ret.list.push_back(std::move(list.list.at(1)));
+  ret.list.push_back(std::move(list.list.at(2)));
   return ret;
 }
 
-Function Parser::create_function(List &list) {
+List Parser::create_define(List &list) {
   //(define name (args) (body))
-  Function ret;
-  if (auto name = ast::to_string(*list.list.at(1))) {
-    ret.name = name.value();
-  } else {
-    throw std::invalid_argument("Invalid function name");
+  //(define (name args) (body)) -> (define name (lambda (args) (body)))
+  if (list.list.size() < 3) {
+    throw std::invalid_argument("Define requires a name and body");
   }
 
-  if (auto args = std::get_if<ast::List>(&list.list.at(2)->node)) {
-    ret.args = std::move(list.list.at(2));
+  std::unique_ptr<SExp> name;
+  std::unique_ptr<SExp> args;
+  std::unique_ptr<SExp> body;
+
+  if (auto *signature = std::get_if<ast::List>(&list.list.at(1)->node)) {
+    if (signature->list.empty()) {
+      throw std::invalid_argument("Invalid function name");
+    }
+    name = std::move(signature->list.at(0));
+    if (!ast::to_string(*name)) {
+      throw std::invalid_argument("Invalid function name");
+    }
+    SExp args_sexp = {.node = List()};
+    auto &args_list = std::get<ast::List>(args_sexp.node);
+    for (size_t i = 1; i < signature->list.size(); ++i) {
+      args_list.list.push_back(std::move(signature->list.at(i)));
+    }
+    args = std::make_unique<SExp>(std::move(args_sexp));
+    body = std::move(list.list.at(2));
   } else {
+    if (list.list.size() < 4) {
+      throw std::invalid_argument("Define requires args and body");
+    }
+    name = std::move(list.list.at(1));
+    if (!ast::to_string(*name)) {
+      throw std::invalid_argument("Invalid function name");
+    }
+    args = std::move(list.list.at(2));
+    body = std::move(list.list.at(3));
+  }
+
+  if (!std::get_if<ast::List>(&args->node)) {
     throw std::invalid_argument("Args Should be a List");
   }
 
-  ret.body = std::move(list.list.at(3));
+  List lambda_list;
+  lambda_list.list.push_back(std::make_unique<SExp>(
+      SExp{.node = Symbol{Keyword::lambda}}));
+  lambda_list.list.push_back(std::move(args));
+  lambda_list.list.push_back(std::move(body));
+
+  List ret;
+  ret.list.push_back(std::move(list.list.at(0)));
+  ret.list.push_back(std::move(name));
+  ret.list.push_back(
+      std::make_unique<SExp>(SExp{.node = std::move(lambda_list)}));
   return ret;
 }
 
 SExp Parser::create_let(List &list) {
   //(let ((x e1) (x e2)) (body)) <-> (lambda (x y) (body) (e1 e2))
   // assumed form: List(Symbol(let) List(List(args)) SExp(Body))
-  // result after parsing List(Function(List(Args) SExp(body)) List(values))
+  // result after parsing List(List(lambda List(Args) SExp(body)) List(values))
   List desugared;
   SExp vars = {.node = List()};
   SExp values = {.node = List()};
@@ -186,10 +241,13 @@ SExp Parser::create_let(List &list) {
     }
   }
 
-  Function fn;
-  fn.args = std::make_unique<SExp>(std::move(vars));
-  fn.body = std::move(list.list.at(2));
-  desugared.list.push_back(std::make_unique<SExp>(SExp{.node = std::move(fn)}));
+  List lambda_list;
+  lambda_list.list.push_back(std::make_unique<SExp>(
+      SExp{.node = Symbol{Keyword::lambda}}));
+  lambda_list.list.push_back(std::make_unique<SExp>(std::move(vars)));
+  lambda_list.list.push_back(std::move(list.list.at(2)));
+  desugared.list.push_back(
+      std::make_unique<SExp>(SExp{.node = std::move(lambda_list)}));
   desugared.list.push_back(std::make_unique<SExp>(std::move(values)));
   return SExp{.node = std::move(desugared)};
 }

@@ -20,15 +20,19 @@ const ast::Symbol *as_symbol(const ast::SExp &sexp) {
   return std::get_if<ast::Symbol>(&sexp.node);
 }
 
-const ast::Function *as_function(const ast::SExp &sexp) {
-  return std::get_if<ast::Function>(&sexp.node);
-}
-
 const ast::SExp *list_item(const ast::List &list, std::size_t index) {
   if (index >= list.list.size() || list.list[index] == nullptr) {
     return nullptr;
   }
   return list.list[index].get();
+}
+
+const ast::Keyword *as_keyword(const ast::SExp &sexp) {
+  const auto *sym = as_symbol(sexp);
+  if (!sym) {
+    return nullptr;
+  }
+  return std::get_if<ast::Keyword>(&sym->value);
 }
 
 TEST(LexerTests, BasicTokens) {
@@ -171,12 +175,39 @@ TEST(ParserTests, DefineCreatesFunctionNode) {
   ASSERT_EQ(ast.size(), 1U);
   ASSERT_NE(ast[0], nullptr);
 
-  const auto *func = as_function(*ast[0]);
-  ASSERT_NE(func, nullptr);
-  EXPECT_EQ(func->name, "add");
+  const auto *define_list = as_list(*ast[0]);
+  ASSERT_NE(define_list, nullptr);
+  ASSERT_EQ(define_list->list.size(), 3U);
 
-  ASSERT_NE(func->args, nullptr);
-  const auto *args_list = as_list(*func->args);
+  const auto *define_kw_item = list_item(*define_list, 0);
+  ASSERT_NE(define_kw_item, nullptr);
+  const auto *define_kw = as_keyword(*define_kw_item);
+  ASSERT_NE(define_kw, nullptr);
+  EXPECT_EQ(*define_kw, ast::Keyword::define);
+
+  const auto *name_item = list_item(*define_list, 1);
+  ASSERT_NE(name_item, nullptr);
+  const auto *name_sym = as_symbol(*name_item);
+  ASSERT_NE(name_sym, nullptr);
+  const auto *name_val = std::get_if<std::string>(&name_sym->value);
+  ASSERT_NE(name_val, nullptr);
+  EXPECT_EQ(*name_val, "add");
+
+  const auto *lambda_item = list_item(*define_list, 2);
+  ASSERT_NE(lambda_item, nullptr);
+  const auto *lambda_list = as_list(*lambda_item);
+  ASSERT_NE(lambda_list, nullptr);
+  ASSERT_EQ(lambda_list->list.size(), 3U);
+
+  const auto *lambda_kw_item = list_item(*lambda_list, 0);
+  ASSERT_NE(lambda_kw_item, nullptr);
+  const auto *lambda_kw = as_keyword(*lambda_kw_item);
+  ASSERT_NE(lambda_kw, nullptr);
+  EXPECT_EQ(*lambda_kw, ast::Keyword::lambda);
+
+  const auto *args_item = list_item(*lambda_list, 1);
+  ASSERT_NE(args_item, nullptr);
+  const auto *args_list = as_list(*args_item);
   ASSERT_NE(args_list, nullptr);
   ASSERT_EQ(args_list->list.size(), 2U);
 
@@ -196,8 +227,9 @@ TEST(ParserTests, DefineCreatesFunctionNode) {
   ASSERT_NE(arg1_name, nullptr);
   EXPECT_EQ(*arg1_name, "y");
 
-  ASSERT_NE(func->body, nullptr);
-  const auto *body_list = as_list(*func->body);
+  const auto *body_item = list_item(*lambda_list, 2);
+  ASSERT_NE(body_item, nullptr);
+  const auto *body_list = as_list(*body_item);
   ASSERT_NE(body_list, nullptr);
   ASSERT_EQ(body_list->list.size(), 3U);
 
@@ -208,6 +240,99 @@ TEST(ParserTests, DefineCreatesFunctionNode) {
   const auto *op_name = std::get_if<std::string>(&op_sym->value);
   ASSERT_NE(op_name, nullptr);
   EXPECT_EQ(*op_name, "+");
+}
+
+TEST(ParserTests, DefineShorthandDesugarsToLambdaBinding) {
+  Parser parser(Lexer("(define (add x y) (+ x y))"));
+  ast::AST ast = parser.parse();
+
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+
+  const auto *define_list = as_list(*ast[0]);
+  ASSERT_NE(define_list, nullptr);
+  ASSERT_EQ(define_list->list.size(), 3U);
+
+  const auto *name_item = list_item(*define_list, 1);
+  ASSERT_NE(name_item, nullptr);
+  const auto *name_sym = as_symbol(*name_item);
+  ASSERT_NE(name_sym, nullptr);
+  const auto *name_val = std::get_if<std::string>(&name_sym->value);
+  ASSERT_NE(name_val, nullptr);
+  EXPECT_EQ(*name_val, "add");
+
+  const auto *lambda_item = list_item(*define_list, 2);
+  ASSERT_NE(lambda_item, nullptr);
+  const auto *lambda_list = as_list(*lambda_item);
+  ASSERT_NE(lambda_list, nullptr);
+  ASSERT_EQ(lambda_list->list.size(), 3U);
+
+  const auto *args_item = list_item(*lambda_list, 1);
+  ASSERT_NE(args_item, nullptr);
+  const auto *args_list = as_list(*args_item);
+  ASSERT_NE(args_list, nullptr);
+  ASSERT_EQ(args_list->list.size(), 2U);
+
+  const auto *arg0 = list_item(*args_list, 0);
+  ASSERT_NE(arg0, nullptr);
+  const auto *arg0_sym = as_symbol(*arg0);
+  ASSERT_NE(arg0_sym, nullptr);
+  const auto *arg0_name = std::get_if<std::string>(&arg0_sym->value);
+  ASSERT_NE(arg0_name, nullptr);
+  EXPECT_EQ(*arg0_name, "x");
+
+  const auto *arg1 = list_item(*args_list, 1);
+  ASSERT_NE(arg1, nullptr);
+  const auto *arg1_sym = as_symbol(*arg1);
+  ASSERT_NE(arg1_sym, nullptr);
+  const auto *arg1_name = std::get_if<std::string>(&arg1_sym->value);
+  ASSERT_NE(arg1_name, nullptr);
+  EXPECT_EQ(*arg1_name, "y");
+
+  const auto *body_item = list_item(*lambda_list, 2);
+  ASSERT_NE(body_item, nullptr);
+  const auto *body_list = as_list(*body_item);
+  ASSERT_NE(body_list, nullptr);
+  ASSERT_EQ(body_list->list.size(), 3U);
+
+  const auto *op_item = list_item(*body_list, 0);
+  ASSERT_NE(op_item, nullptr);
+  const auto *op_sym = as_symbol(*op_item);
+  ASSERT_NE(op_sym, nullptr);
+  const auto *op_name = std::get_if<std::string>(&op_sym->value);
+  ASSERT_NE(op_name, nullptr);
+  EXPECT_EQ(*op_name, "+");
+}
+
+TEST(ParserTests, NestedLetInDefineResolves) {
+  Parser parser(Lexer("(define add (x y) (let ((z 1)) (+ z y)))"));
+  ast::AST ast = parser.parse();
+
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+  const auto *define_list = as_list(*ast[0]);
+  ASSERT_NE(define_list, nullptr);
+
+  const auto *lambda_item = list_item(*define_list, 2);
+  ASSERT_NE(lambda_item, nullptr);
+  const auto *lambda_list = as_list(*lambda_item);
+  ASSERT_NE(lambda_list, nullptr);
+
+  const auto *body_item = list_item(*lambda_list, 2);
+  ASSERT_NE(body_item, nullptr);
+  const auto *body_list = as_list(*body_item);
+  ASSERT_NE(body_list, nullptr);
+  ASSERT_FALSE(body_list->list.empty());
+
+  const auto *fn_item = list_item(*body_list, 0);
+  ASSERT_NE(fn_item, nullptr);
+  const auto *nested_lambda_list = as_list(*fn_item);
+  ASSERT_NE(nested_lambda_list, nullptr);
+  const auto *nested_kw_item = list_item(*nested_lambda_list, 0);
+  ASSERT_NE(nested_kw_item, nullptr);
+  const auto *nested_kw = as_keyword(*nested_kw_item);
+  ASSERT_NE(nested_kw, nullptr);
+  EXPECT_EQ(*nested_kw, ast::Keyword::lambda);
 }
 
 TEST(ParserTests, LetDesugarsToFunctionCall) {
@@ -223,11 +348,19 @@ TEST(ParserTests, LetDesugarsToFunctionCall) {
 
   const auto *fn_item = list_item(*list, 0);
   ASSERT_NE(fn_item, nullptr);
-  const auto *fn = as_function(*fn_item);
-  ASSERT_NE(fn, nullptr);
+  const auto *lambda_list = as_list(*fn_item);
+  ASSERT_NE(lambda_list, nullptr);
+  ASSERT_EQ(lambda_list->list.size(), 3U);
 
-  ASSERT_NE(fn->args, nullptr);
-  const auto *args_list = as_list(*fn->args);
+  const auto *lambda_kw_item = list_item(*lambda_list, 0);
+  ASSERT_NE(lambda_kw_item, nullptr);
+  const auto *lambda_kw = as_keyword(*lambda_kw_item);
+  ASSERT_NE(lambda_kw, nullptr);
+  EXPECT_EQ(*lambda_kw, ast::Keyword::lambda);
+
+  const auto *args_item = list_item(*lambda_list, 1);
+  ASSERT_NE(args_item, nullptr);
+  const auto *args_list = as_list(*args_item);
   ASSERT_NE(args_list, nullptr);
   ASSERT_EQ(args_list->list.size(), 2U);
 
@@ -247,8 +380,9 @@ TEST(ParserTests, LetDesugarsToFunctionCall) {
   ASSERT_NE(arg1_name, nullptr);
   EXPECT_EQ(*arg1_name, "y");
 
-  ASSERT_NE(fn->body, nullptr);
-  const auto *body_list = as_list(*fn->body);
+  const auto *body_item = list_item(*lambda_list, 2);
+  ASSERT_NE(body_item, nullptr);
+  const auto *body_list = as_list(*body_item);
   ASSERT_NE(body_list, nullptr);
   ASSERT_EQ(body_list->list.size(), 3U);
 

@@ -16,19 +16,12 @@ struct Symbol {
 
 struct SExp;
 
-struct Function {
-  std::optional<std::string> name;
-  size_t scope_id;
-  std::unique_ptr<SExp> args;
-  std::unique_ptr<SExp> body;
-};
-
 struct List {
   std::vector<std::unique_ptr<SExp>> list;
 };
 
 struct SExp {
-  std::variant<List, Symbol, Function> node;
+  std::variant<List, Symbol> node;
 };
 
 using AST = std::vector<std::unique_ptr<SExp>>;

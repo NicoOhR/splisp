@@ -17,8 +17,8 @@ private:
   std::unique_ptr<SExp> create_sexp();
   List create_list();
   void resolve_forms(SExp &rsexp);
-  ast::Function create_function(List &list);
-  ast::Function create_lambda(List &list);
+  ast::List create_define(List &list);
+  ast::List create_lambda(List &list);
   ast::SExp create_let(List &list);
 
   Lexer lex;
