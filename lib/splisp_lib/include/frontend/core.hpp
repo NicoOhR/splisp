@@ -41,23 +41,29 @@ struct Define {
 };
 
 struct Expr {
-  std::variant<Apply, Lambda, Const, Cond> node;
+  std::variant<Apply, Lambda, Const, Cond, Var> node;
 };
 
 using Top = std::variant<Define, Expr>;
 
 using Program = std::vector<Top>;
 
-Top lower_top(const ast::SExp &sexp);
+class Lowerer {
+public:
+  Program &lower(const ast::AST &ast);
 
-Define lower_definition(const ast::SExp &sexp);
-Expr lower_expr(const ast::SExp &sexp);
+private:
+  Top lower_top(const ast::SExp &sexp);           //
+  Expr lower_expr(const ast::SExp &sexp);         //
+  Define lower_definition(const ast::SExp &sexp); //
 
-Const lower_const(const ast::SExp &sexp);
-Var lower_var(const ast::SExp &sexp);
-Apply lower_apply(const ast::SExp &sexp);
-Lambda lower_lambda(const ast::SExp &sexp);
-Cond lower_condition(const ast::SExp &sexp);
-Program from_ast(const ast::AST &ast);
+  Const lower_const(const ast::SExp &sexp); //
+  Var lower_var(const ast::SExp &sexp);
+  Apply lower_apply(const ast::SExp &sexp);
+  Lambda lower_lambda(const ast::SExp &sexp);
+  Cond lower_condition(const ast::SExp &sexp);
+
+  Program program_;
+};
 
 } // namespace core

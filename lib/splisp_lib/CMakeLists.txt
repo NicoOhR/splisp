@@ -3,6 +3,7 @@ add_library(splisp_lib STATIC
   src/frontend/lexer.cpp
   src/frontend/parser.cpp
   src/frontend/scoper.cpp
+  src/frontend/core.cpp
   src/backend/generator/generator.cpp
   src/backend/vm/stack.cpp
   src/backend/isa/isa.cpp

@@ -12,8 +12,12 @@ enum Keyword { if_expr, let, lambda, define };
 
 struct SExp;
 
+struct SymbolID {
+  uint64_t id;
+};
+
 struct Symbol {
-  std::variant<Keyword, std::string, std::uint64_t, bool> value;
+  std::variant<Keyword, std::string, SymbolID, std::uint64_t, bool> value;
 };
 
 struct List {
