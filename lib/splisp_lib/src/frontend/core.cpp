@@ -139,6 +139,16 @@ core::Lambda core::Lowerer::lower_lambda(const ast::SExp &sexp) {
   }
   return ret;
 }
-core::Cond lower_condition(const ast::SExp &sexp) {
+core::Cond core::Lowerer::lower_condition(const ast::SExp &sexp) {
   // List(Keyword(If) SExp(cond) SExp(Then) SExp(Else))
+  core::Cond ret;
+  if (const auto lst = std::get_if<ast::List>(&sexp.node)) {
+    ret.condition = std::make_unique<core::Expr>(
+        core::Lowerer::lower_expr(*lst->list.at(1)));
+    ret.then = std::make_unique<core::Expr>(
+        core::Lowerer::lower_expr(*lst->list.at(2)));
+    ret.otherwise = std::make_unique<core::Expr>(
+        core::Lowerer::lower_expr(*lst->list.at(3)));
+  }
+  return ret;
 }
