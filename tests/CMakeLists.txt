@@ -13,6 +13,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(splisp_tests
   generator_tests.cpp
   lexer_parser_tests.cpp
+  lowerer_tests.cpp
   vm_program_tests.cpp
   vm_stack_tests.cpp
 )

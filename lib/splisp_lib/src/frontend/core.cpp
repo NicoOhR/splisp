@@ -3,8 +3,11 @@
 #include <cstdint>
 #include <cstdlib>
 #include <frontend/core.hpp>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <type_traits>
 #include <variant>
 
 core::Program &core::Lowerer::lower(const ast::AST &ast) {
@@ -152,3 +155,203 @@ core::Cond core::Lowerer::lower_condition(const ast::SExp &sexp) {
   }
   return ret;
 }
+
+namespace core {
+
+namespace {
+void print_indent(int level) { std::cout << std::string(level * 2, ' '); }
+} // namespace
+
+void print_const(const Const &konst, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Const " << konst.value;
+}
+
+void print_var(const Var &var, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Var " << var.id;
+}
+
+void print_apply(const Apply &apply, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Apply";
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Callee";
+  if (apply.callee) {
+    print_expr(*apply.callee, level + 2);
+  } else {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<null>";
+  }
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Args";
+  if (apply.args.empty()) {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<empty>";
+    return;
+  }
+
+  for (const auto &arg : apply.args) {
+    if (arg) {
+      print_expr(*arg, level + 2);
+    } else {
+      std::cout << std::endl;
+      print_indent(level + 2);
+      std::cout << "<null>";
+    }
+  }
+}
+
+void print_lambda(const Lambda &lambda, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Lambda";
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Formals";
+  if (lambda.formals.empty()) {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<empty>";
+  } else {
+    for (const auto &formal : lambda.formals) {
+      std::cout << std::endl;
+      print_indent(level + 2);
+      if (formal) {
+        std::cout << "SymbolId " << *formal;
+      } else {
+        std::cout << "<null>";
+      }
+    }
+  }
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Body";
+  if (lambda.body.empty()) {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<empty>";
+    return;
+  }
+  for (const auto &expr : lambda.body) {
+    if (expr) {
+      print_expr(*expr, level + 2);
+    } else {
+      std::cout << std::endl;
+      print_indent(level + 2);
+      std::cout << "<null>";
+    }
+  }
+}
+
+void print_cond(const Cond &cond, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Cond";
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Condition";
+  if (cond.condition) {
+    print_expr(*cond.condition, level + 2);
+  } else {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<null>";
+  }
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Then";
+  if (cond.then) {
+    print_expr(*cond.then, level + 2);
+  } else {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<null>";
+  }
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Otherwise";
+  if (cond.otherwise) {
+    print_expr(*cond.otherwise, level + 2);
+  } else {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<null>";
+  }
+}
+
+void print_define(const Define &defn, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Define";
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Name " << defn.name;
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Rhs";
+  if (defn.rhs) {
+    print_expr(*defn.rhs, level + 2);
+  } else {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<null>";
+  }
+}
+
+void print_expr(const Expr &expr, int level) {
+  std::visit(
+      [level](const auto &node) {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, Apply>) {
+          print_apply(node, level);
+        } else if constexpr (std::is_same_v<T, Lambda>) {
+          print_lambda(node, level);
+        } else if constexpr (std::is_same_v<T, Const>) {
+          print_const(node, level);
+        } else if constexpr (std::is_same_v<T, Cond>) {
+          print_cond(node, level);
+        } else if constexpr (std::is_same_v<T, Var>) {
+          print_var(node, level);
+        }
+      },
+      expr.node);
+}
+
+void print_top(const Top &top, int level) {
+  std::visit(
+      [level](const auto &node) {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, Define>) {
+          print_define(node, level);
+        } else if constexpr (std::is_same_v<T, Expr>) {
+          print_expr(node, level);
+        }
+      },
+      top);
+}
+
+void print_program(const Program &program) {
+  std::cout << "Core";
+  for (const auto &top : program) {
+    print_top(top, 1);
+  }
+}
+
+} // namespace core

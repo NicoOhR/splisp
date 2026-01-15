@@ -48,6 +48,16 @@ using Top = std::variant<Define, Expr>;
 
 using Program = std::vector<Top>;
 
+void print_const(const Const &konst, int level);
+void print_var(const Var &var, int level);
+void print_apply(const Apply &apply, int level);
+void print_lambda(const Lambda &lambda, int level);
+void print_cond(const Cond &cond, int level);
+void print_define(const Define &defn, int level);
+void print_expr(const Expr &expr, int level);
+void print_top(const Top &top, int level);
+void print_program(const Program &program);
+
 class Lowerer {
 public:
   Program &lower(const ast::AST &ast);
