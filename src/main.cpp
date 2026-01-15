@@ -4,7 +4,7 @@
 #include <string>
 
 int main() {
-  std::string program = "(define add (x y) (+ x y))";
+  std::string program = "(lambda (x y) (+ x y) (+ x 1))";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

@@ -146,7 +146,7 @@ void Parser::resolve_forms(SExp &sexp) {
 }
 
 ast::List Parser::create_lambda(List &list) {
-  //(lambda (args) (body))
+  //(lambda (args) (sexp) (sexp) ... )
   if (list.list.size() < 3) {
     throw std::invalid_argument("Lambda requires args and body");
   }
@@ -154,9 +154,9 @@ ast::List Parser::create_lambda(List &list) {
     throw std::invalid_argument("Args Should be a List");
   }
   List ret;
-  ret.list.push_back(std::move(list.list.at(0)));
-  ret.list.push_back(std::move(list.list.at(1)));
-  ret.list.push_back(std::move(list.list.at(2)));
+  for (size_t i = 0; i < list.list.size(); i++) {
+    ret.list.push_back(std::move(list.list.at(i)));
+  }
   return ret;
 }
 
