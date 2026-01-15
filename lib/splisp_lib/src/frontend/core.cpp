@@ -1,6 +1,7 @@
 #include "frontend/ast.hpp"
 #include <boost/throw_exception.hpp>
 #include <cstdint>
+#include <cstdlib>
 #include <frontend/core.hpp>
 #include <memory>
 #include <stdexcept>
@@ -107,7 +108,37 @@ core::Const core::Lowerer::lower_const(const ast::SExp &sexp) {
   }
 }
 
-core::Var core::Lowerer::lower_var(const ast::SExp &sexp) {}
+core::Var core::Lowerer::lower_var(const ast::SExp &sexp) {
+  core::Var ret;
+  if (const auto sym = std::get_if<ast::Symbol>(&sexp.node)) {
+    if (const auto id = std::get_if<ast::SymbolID>(&sym->value)) {
+      ret.id = id->id;
+    }
+  }
+  return ret;
+}
 
-core::Lambda lower_lambda(const ast::SExp &sexp) {}
-core::Cond lower_condition(const ast::SExp &sexp) {}
+core::Lambda core::Lowerer::lower_lambda(const ast::SExp &sexp) {
+  // List(Kword(Lambda) List(args) List(Body) List(Body)*)
+  core::Lambda ret;
+  if (const auto lst = std::get_if<ast::List>(&sexp.node)) {
+    if (const auto args = std::get_if<ast::List>(&lst->list.at(1)->node)) {
+      for (size_t i = 0; i < args->list.size(); i++) {
+        if (const auto sym =
+                std::get_if<ast::Symbol>(&args->list.at(i)->node)) {
+          if (const auto id = std::get_if<ast::SymbolID>(&sym->value)) {
+            ret.formals.push_back(std::make_unique<core::SymbolId>(id->id));
+          }
+        }
+      }
+      for (size_t i = 2; i < lst->list.size(); i++) {
+        ret.body.push_back(std::make_unique<core::Expr>(
+            core::Lowerer::lower_expr(*lst->list.at(i))));
+      }
+    }
+  }
+  return ret;
+}
+core::Cond lower_condition(const ast::SExp &sexp) {
+  // List(Keyword(If) SExp(cond) SExp(Then) SExp(Else))
+}

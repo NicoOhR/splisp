@@ -24,8 +24,8 @@ struct Apply {
 };
 
 struct Lambda {
-  std::vector<std::unique_ptr<SymbolId>> params;
-  std::unique_ptr<Expr> body;
+  std::vector<std::unique_ptr<SymbolId>> formals;
+  std::vector<std::unique_ptr<Expr>> body;
 };
 
 struct Cond {
@@ -59,7 +59,7 @@ private:
 
   Const lower_const(const ast::SExp &sexp); //
   Var lower_var(const ast::SExp &sexp);
-  Apply lower_apply(const ast::SExp &sexp);
+  Apply lower_apply(const ast::SExp &sexp); //
   Lambda lower_lambda(const ast::SExp &sexp);
   Cond lower_condition(const ast::SExp &sexp);
 
