@@ -29,6 +29,6 @@ public:
   void resolve(ast::AST &ast);
 
 private:
-  SymbolTable table;
+  SymbolTable root;
   size_t next_binding_id = 0;
 };

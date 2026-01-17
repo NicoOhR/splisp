@@ -26,6 +26,8 @@ struct List {
 
 struct SExp {
   std::variant<List, Symbol> node;
+  std::optional<size_t>
+      scope_id; // need to switch to an initalizer to make this a nullopt
 };
 
 using AST = std::vector<std::unique_ptr<SExp>>;

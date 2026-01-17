@@ -46,7 +46,6 @@ void Scoper::run(ast::AST &ast) {
                       child_scope->scope_id = ++curr_idx;
                       child_scope->symbols = std::move(syms);
                       child_scope->parent = parent;
-                      sexp.scope_id = curr_idx;
                       SymbolTable *child_ptr = child_scope.get();
                       parent->children.push_back(std::move(child_scope));
                       for (auto &child : node.list) {
@@ -84,7 +83,6 @@ void Scoper::run(ast::AST &ast) {
                       child_scope->scope_id = ++curr_idx;
                       child_scope->symbols = std::move(syms);
                       child_scope->parent = parent;
-                      sexp.scope_id = curr_idx;
                       SymbolTable *child_ptr = child_scope.get();
                       parent->children.push_back(std::move(child_scope));
                       for (auto &child : node.list) {
@@ -107,7 +105,7 @@ void Scoper::run(ast::AST &ast) {
             return;
           }
         },
-        sexp.node);
+        sexp);
   };
   for (auto &root : ast) {
     visit(*root, &this->root);
