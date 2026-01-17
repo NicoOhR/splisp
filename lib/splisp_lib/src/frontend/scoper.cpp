@@ -1,4 +1,6 @@
+#include "frontend/ast.hpp"
 #include <frontend/scoper.hpp>
+#include <string>
 #include <type_traits>
 #include <variant>
 
@@ -12,39 +14,94 @@ void Scoper::run(ast::AST &ast) {
   // recurse from the top of the AST; lambda list forms define their own
   // lexical scope. Using C++23 features implemented only by the legally insane
   size_t curr_idx = 0;
-  auto visit = [&](this auto &&self, ast::SExp &sexp,
-                   SymbolTable *parent) -> void {
+  auto visit = [&, curr_idx, scoper = this](this auto &&self, ast::SExp &sexp,
+                                            SymbolTable *parent) -> void {
     std::visit(
         [&](auto &node) {
           using T = std::decay_t<decltype(node)>;
           if constexpr (std::is_same_v<T, ast::List>) {
             // for any list that we encounter, recur down to that level
-            bool is_lambda = false;
             if (!node.list.empty()) {
               if (auto *sym =
                       std::get_if<ast::Symbol>(&node.list.front()->node)) {
                 if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
-                  is_lambda = (*kw == ast::Keyword::lambda);
+                  switch (*kw) {
+                  case (ast::Keyword::lambda): {
+                    // List(Kword(Lambda) List(Symbols(Strings(Args))) ...)
+                    if (auto *args =
+                            std::get_if<ast::List>(&node.list.at(1)->node)) {
+                      std::unordered_map<std::string, Binding> syms;
+                      for (size_t i = 0; i < args->list.size(); i++) {
+                        if (auto *arg = std::get_if<ast::Symbol>(
+                                &args->list.at(i)->node)) {
+                          if (auto *ident =
+                                  std::get_if<std::string>(&arg->value)) {
+                            syms[*ident] =
+                                Binding{.kind = BindingKind::VALUE,
+                                        .value = scoper->next_binding_id++};
+                          }
+                        }
+                      }
+                      auto child_scope = std::make_unique<SymbolTable>();
+                      child_scope->scope_id = ++curr_idx;
+                      child_scope->symbols = std::move(syms);
+                      child_scope->parent = parent;
+                      SymbolTable *child_ptr = child_scope.get();
+                      parent->children.push_back(std::move(child_scope));
+                      for (auto &child : node.list) {
+                        self(*child, child_ptr);
+                      }
+                      return;
+                    }
+                  }
+                  case (ast::Keyword::define): {
+                    // List(Kword(Define) Symbol(name) ...)
+                    if (auto *name =
+                            std::get_if<ast::Symbol>(&node.list.at(1)->node)) {
+                      if (auto *ident =
+                              std::get_if<std::string>(&name->value)) {
+                        parent->symbols[*ident] =
+                            Binding{.kind = BindingKind::FUNC,
+                                    .value = scoper->next_binding_id++};
+                      }
+                    }
+                    if (auto *args =
+                            std::get_if<ast::List>(&node.list.at(2)->node)) {
+                      std::unordered_map<std::string, Binding> syms;
+                      for (size_t i = 0; i < args->list.size(); i++) {
+                        if (auto *arg = std::get_if<ast::Symbol>(
+                                &args->list.at(i)->node)) {
+                          if (auto *ident =
+                                  std::get_if<std::string>(&arg->value)) {
+                            syms[*ident] =
+                                Binding{.kind = BindingKind::VALUE,
+                                        .value = scoper->next_binding_id++};
+                          }
+                        }
+                      }
+                      auto child_scope = std::make_unique<SymbolTable>();
+                      child_scope->scope_id = ++curr_idx;
+                      child_scope->symbols = std::move(syms);
+                      child_scope->parent = parent;
+                      SymbolTable *child_ptr = child_scope.get();
+                      parent->children.push_back(std::move(child_scope));
+                      for (auto &child : node.list) {
+                        self(*child, child_ptr);
+                      }
+                      return;
+                    }
+                  }
+                  default:
+                    break;
+                  }
                 }
               }
             }
-
-            if (is_lambda) {
-              curr_idx++;
-              SymbolTable this_scope = {.scope_id = curr_idx, .parent = parent};
-              for (auto &child : node.list) {
-                self(*child, &this_scope);
-              }
-              return;
-            }
-
             for (auto &child : node.list) {
               self(*child, parent);
             }
-            return;
           }
           if constexpr (std::is_same_v<T, ast::Symbol>) {
-            // symbols don't have their own lexical scope so we can skip it
             return;
           }
         },

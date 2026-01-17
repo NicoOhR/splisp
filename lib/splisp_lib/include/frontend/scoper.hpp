@@ -1,11 +1,14 @@
 #include "frontend/ast.hpp"
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #pragma
 
 enum BindingKind { VALUE, FUNC };
+// given an AST
+// replace all bindings with unique SymbolID's
 
 struct Binding {
   BindingKind kind;
@@ -15,6 +18,7 @@ struct Binding {
 struct SymbolTable {
   size_t scope_id;
   std::unordered_map<std::string, Binding> symbols;
+  std::vector<std::unique_ptr<SymbolTable>> children;
   SymbolTable *parent;
 };
 
@@ -23,8 +27,8 @@ public:
   Scoper();
   void run(ast::AST &ast);
   void resolve(ast::AST &ast);
-  void convert(ast::AST &ast);
 
 private:
   SymbolTable table;
+  size_t next_binding_id = 0;
 };
