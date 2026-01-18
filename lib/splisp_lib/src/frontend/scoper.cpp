@@ -114,4 +114,24 @@ void Scoper::run(ast::AST &ast) {
   }
 }
 
-void Scoper::resolve(ast::AST &ast) {}
+void Scoper::resolve(ast::AST &ast) {
+  auto visit = [&, scoper = this](this auto &&self, ast::SExp &sexp,
+                                  SymbolTable *parent) -> void {
+    std::visit(
+        [&](auto &node) -> void {
+          using T = std::decay_t<decltype(node)>;
+          // 1. go down to a symbol and identify which scope id it's part of
+          // a) maintain a current_scope as a parameter, at every SExp update it
+          // if that field is populated
+          // 2. find in table, try to resolve from the symbol
+          // 3. if its not found, go up to parent and repeat
+
+          if constexpr (std::is_same_v<T, ast::List>) {
+          }
+        },
+        sexp.node);
+  };
+  for (auto &root : ast) {
+    visit(*root, &this->root);
+  }
+}
