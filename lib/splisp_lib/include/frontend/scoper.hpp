@@ -16,6 +16,8 @@ struct Binding {
   uint64_t value;
 };
 
+const std::array<std::string, 5> builtin = {"+", "-", "/", "%", "*"};
+
 struct SymbolTable {
   size_t scope_id;
   std::unordered_map<std::string, Binding> symbols;

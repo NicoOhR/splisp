@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <frontend/scoper.hpp>
 #include <iostream>
+#include <ranges>
 #include <stack>
 #include <stdexcept>
 #include <string>
@@ -12,11 +13,6 @@ Scoper::Scoper() {
   // create global scope
   root.scope_id = 0;
   root.parent = nullptr;
-  const char *builtins[] = {"+", "-", "*", "/", "%"};
-  for (const char *name : builtins) {
-    root.symbols.emplace(
-        name, Binding{.kind = BindingKind::FUNC, .value = next_binding_id++});
-  }
 }
 
 void Scoper::run(ast::AST &ast) {
@@ -160,8 +156,11 @@ void Scoper::resolve(ast::AST &ast) {
           }
           if constexpr (std::is_same_v<T, ast::Symbol>) {
             if (auto *ident = std::get_if<std::string>(&node.value)) {
-              auto binding = scoper->search(*ident, curr_scope);
-              node.value = ast::SymbolID{binding.value};
+              if (std::find(builtin.begin(), builtin.end(), *ident) ==
+                  builtin.end()) {
+                auto binding = scoper->search(*ident, curr_scope);
+                node.value = ast::SymbolID{binding.value};
+              }
             }
           }
         },
