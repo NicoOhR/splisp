@@ -22,6 +22,8 @@ void print_symbol(const Symbol &sym, int level) {
         std::string stuff(level * 2, ' ');
         if constexpr (std::is_same_v<T, std::string>) {
           std::cout << stuff << "Ident " << v;
+        } else if constexpr (std::is_same_v<T, SymbolID>) {
+          std::cout << stuff << "SymbolID " << v.id;
         } else if constexpr (std::is_same_v<T, std::uint64_t>) {
           std::cout << stuff << "Int " << v;
         } else if constexpr (std::is_same_v<T, bool>) {

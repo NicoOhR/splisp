@@ -12,6 +12,11 @@ Scoper::Scoper() {
   // create global scope
   root.scope_id = 0;
   root.parent = nullptr;
+  const char *builtins[] = {"+", "-", "*", "/", "%"};
+  for (const char *name : builtins) {
+    root.symbols.emplace(
+        name, Binding{.kind = BindingKind::FUNC, .value = next_binding_id++});
+  }
 }
 
 void Scoper::run(ast::AST &ast) {
@@ -132,6 +137,9 @@ void Scoper::resolve(ast::AST &ast) {
           // 2. find in table, try to resolve from the symbol
           // 3. if its not found, go up to parent and repeat
           if constexpr (std::is_same_v<T, ast::List>) {
+            if (node.list.empty()) {
+              return;
+            }
             if (auto *sym =
                     std::get_if<ast::Symbol>(&node.list.front()->node)) {
               if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
@@ -141,9 +149,13 @@ void Scoper::resolve(ast::AST &ast) {
                     for (size_t i = 1; i < node.list.size(); i++) {
                       self(*node.list.at(i), *sexp.scope_id);
                     }
+                    return;
                   }
                 }
               }
+            }
+            for (size_t i = 0; i < node.list.size(); i++) {
+              self(*node.list.at(i), curr_scope);
             }
           }
           if constexpr (std::is_same_v<T, ast::Symbol>) {
@@ -184,14 +196,14 @@ SymbolTable *Scoper::find_table(size_t id) {
 
 Binding Scoper::search(std::string ident, size_t lowest_scope) {
   auto table = Scoper::find_table(lowest_scope);
-  while (table->parent != nullptr) {
+  while (table != nullptr) {
     if (auto it = table->symbols.find(ident); it != table->symbols.end()) {
       return it->second;
     } else {
       table = table->parent;
     }
   }
-  throw std::invalid_argument("symbol not found in any scope");
+  throw std::invalid_argument(ident + " symbol not found in any scope");
 };
 
 void print_symbol_table(std::ostream &os, const SymbolTable &table,
