@@ -20,6 +20,14 @@ const ast::Symbol *as_symbol(const ast::SExp &sexp) {
   return std::get_if<ast::Symbol>(&sexp.node);
 }
 
+const ast::SymbolID *as_symbol_id(const ast::SExp &sexp) {
+  const auto *sym = as_symbol(sexp);
+  if (!sym) {
+    return nullptr;
+  }
+  return std::get_if<ast::SymbolID>(&sym->value);
+}
+
 const ast::SExp *list_item(const ast::List &list, std::size_t index) {
   if (index >= list.list.size() || list.list[index] == nullptr) {
     return nullptr;
@@ -171,6 +179,24 @@ TEST(ScoperTests, SearchFindsNearestBindingInParentScopes) {
   const Binding outer_binding = scoper.search("x", inner.scope_id);
   EXPECT_EQ(outer_binding.kind, BindingKind::VALUE);
   EXPECT_EQ(outer_binding.value, 0U);
+}
+
+TEST(ScoperTests, ResolveRewritesSymbolsToBindingIds) {
+  ast::AST ast = parse_program("(lambda (x) x)");
+
+  Scoper scoper;
+  scoper.run(ast);
+  scoper.resolve(ast);
+
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+  const auto *outer_list = as_list(*ast[0]);
+  ASSERT_NE(outer_list, nullptr);
+  const auto *body_item = list_item(*outer_list, 2);
+  ASSERT_NE(body_item, nullptr);
+  const auto *body_id = as_symbol_id(*body_item);
+  ASSERT_NE(body_id, nullptr);
+  EXPECT_EQ(body_id->id, 0U);
 }
 
 } // namespace

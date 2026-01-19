@@ -58,6 +58,7 @@ void Scoper::run(ast::AST &ast) {
                       }
                       return;
                     }
+                    break;
                   }
                   case (ast::Keyword::define): {
                     // List(Kword(Define) Symbol(name) ...)
@@ -96,6 +97,7 @@ void Scoper::run(ast::AST &ast) {
                       }
                       return;
                     }
+                    break;
                   }
                   default:
                     break;
@@ -146,7 +148,8 @@ void Scoper::resolve(ast::AST &ast) {
           }
           if constexpr (std::is_same_v<T, ast::Symbol>) {
             if (auto *ident = std::get_if<std::string>(&node.value)) {
-              // search
+              auto binding = scoper->search(*ident, curr_scope);
+              node.value = ast::SymbolID{binding.value};
             }
           }
         },

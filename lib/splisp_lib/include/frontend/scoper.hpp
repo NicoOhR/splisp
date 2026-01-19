@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#pragma
+#pragma once
 
 enum BindingKind { VALUE, FUNC };
 // given an AST
