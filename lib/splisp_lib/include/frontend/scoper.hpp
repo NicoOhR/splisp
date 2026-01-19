@@ -1,6 +1,7 @@
 #include "frontend/ast.hpp"
 #include <cstdint>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -29,6 +30,13 @@ public:
   void resolve(ast::AST &ast);
 
 private:
+  // find the current scoped symbol table
+  SymbolTable *find_table(size_t id);
+  // search for the ident moving up the symbol table tree
+  Binding search(std::string ident, size_t lowest_scope);
   SymbolTable root;
   size_t next_binding_id = 0;
 };
+
+void print_symbol_table(std::ostream &os, const SymbolTable &table,
+                        size_t indent = 0);

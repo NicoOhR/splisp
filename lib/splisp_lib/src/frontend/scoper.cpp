@@ -1,5 +1,9 @@
 #include "frontend/ast.hpp"
+#include <algorithm>
 #include <frontend/scoper.hpp>
+#include <iostream>
+#include <stack>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -116,7 +120,7 @@ void Scoper::run(ast::AST &ast) {
 
 void Scoper::resolve(ast::AST &ast) {
   auto visit = [&, scoper = this](this auto &&self, ast::SExp &sexp,
-                                  SymbolTable *parent) -> void {
+                                  size_t curr_scope) -> void {
     std::visit(
         [&](auto &node) -> void {
           using T = std::decay_t<decltype(node)>;
@@ -125,13 +129,88 @@ void Scoper::resolve(ast::AST &ast) {
           // if that field is populated
           // 2. find in table, try to resolve from the symbol
           // 3. if its not found, go up to parent and repeat
-
           if constexpr (std::is_same_v<T, ast::List>) {
+            if (auto *sym =
+                    std::get_if<ast::Symbol>(&node.list.front()->node)) {
+              if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
+                if (*kw == ast::Keyword::lambda ||
+                    *kw == ast::Keyword::define) {
+                  if (sexp.scope_id) {
+                    for (size_t i = 1; i < node.list.size(); i++) {
+                      self(*node.list.at(i), *sexp.scope_id);
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if constexpr (std::is_same_v<T, ast::Symbol>) {
+            if (auto *ident = std::get_if<std::string>(&node.value)) {
+              // search
+            }
           }
         },
         sexp.node);
   };
   for (auto &root : ast) {
-    visit(*root, &this->root);
+    visit(*root, 0);
+  }
+}
+SymbolTable *Scoper::find_table(size_t id) {
+  // i'm relatively sure that the scope id's are linear so a full DFS is
+  // probably not needed, all the same.
+  std::stack<SymbolTable *> stack;
+  std::vector<size_t> visited;
+  stack.push(&root);
+  while (!stack.empty()) {
+    auto curr = stack.top();
+    stack.pop();
+    if (curr->scope_id == id) {
+      return curr;
+    }
+    if (std::find(visited.begin(), visited.end(), curr->scope_id) ==
+        visited.end()) {
+      visited.push_back(curr->scope_id);
+      for (auto &child : curr->children) {
+        stack.push(child.get());
+      }
+    }
+  }
+  throw std::invalid_argument("scope not found");
+};
+
+Binding Scoper::search(std::string ident, size_t lowest_scope) {
+  auto table = Scoper::find_table(lowest_scope);
+  while (table->parent != nullptr) {
+    if (auto it = table->symbols.find(ident); it != table->symbols.end()) {
+      return it->second;
+    } else {
+      table = table->parent;
+    }
+  }
+  throw std::invalid_argument("symbol not found in any scope");
+};
+
+void print_symbol_table(std::ostream &os, const SymbolTable &table,
+                        size_t indent) {
+  const auto kind_name = [](BindingKind kind) -> const char * {
+    switch (kind) {
+    case BindingKind::VALUE:
+      return "value";
+    case BindingKind::FUNC:
+      return "func";
+    default:
+      return "unknown";
+    }
+  };
+
+  const std::string pad(indent, ' ');
+  os << pad << "scope " << table.scope_id << '\n';
+  for (const auto &entry : table.symbols) {
+    os << pad << "  " << entry.first << ": " << kind_name(entry.second.kind)
+       << " id=" << entry.second.value << '\n';
+  }
+  for (const auto &child : table.children) {
+    print_symbol_table(os, *child, indent + 2);
   }
 }

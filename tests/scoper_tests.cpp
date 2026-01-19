@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <sstream>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -145,6 +146,31 @@ TEST(ScoperTests, LambdaScopeIdsAnnotatedOnAstNodes) {
   ASSERT_EQ(outer_scope.children.size(), 1U);
   const SymbolTable &inner_scope = *outer_scope.children[0];
   EXPECT_EQ(inner_item->scope_id.value(), inner_scope.scope_id);
+}
+
+TEST(ScoperTests, SearchFindsNearestBindingInParentScopes) {
+  ast::AST ast = parse_program("(lambda (x) (lambda (y) (+ x y)))");
+
+  Scoper scoper;
+  scoper.run(ast);
+
+  std::ostringstream table_out;
+  print_symbol_table(table_out, scoper.root);
+  std::cout << table_out.str();
+  EXPECT_FALSE(table_out.str().empty());
+
+  ASSERT_EQ(scoper.root.children.size(), 1U);
+  const SymbolTable &outer = *scoper.root.children[0];
+  ASSERT_EQ(outer.children.size(), 1U);
+  const SymbolTable &inner = *outer.children[0];
+
+  const Binding inner_binding = scoper.search("y", inner.scope_id);
+  EXPECT_EQ(inner_binding.kind, BindingKind::VALUE);
+  EXPECT_EQ(inner_binding.value, 1U);
+
+  const Binding outer_binding = scoper.search("x", inner.scope_id);
+  EXPECT_EQ(outer_binding.kind, BindingKind::VALUE);
+  EXPECT_EQ(outer_binding.value, 0U);
 }
 
 } // namespace
