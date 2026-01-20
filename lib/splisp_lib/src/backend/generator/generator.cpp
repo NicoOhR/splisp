@@ -9,111 +9,75 @@
 #include <variant>
 
 void Generator::generate() {
-  for (auto &sexp : this->ast) {
-    emit_sexp(*sexp);
+  for (auto &top : this->program) {
+    emit_top(top);
   }
 }
 
-void Generator::emit_sexp(const ast::SExp &sexp) {
+void Generator::emit_top(const core::Top &top) {
   std::visit(
       [this](const auto &p) {
         using T = std::decay_t<decltype(p)>;
-        if constexpr (std::is_same_v<T, ast::List>) {
-          emit_list(p);
-        } else if constexpr (std::is_same_v<T, ast::Symbol>) {
-          emit_symbol(p);
+        if constexpr (std::is_same_v<T, core::Define>) {
+          emit_define(p);
+        } else if constexpr (std::is_same_v<T, core::Expr>) {
+          emit_expr(p);
         }
       },
-      sexp.node);
+      top);
 }
-void Generator::emit_symbol(const ast::Symbol &sym) {
-  ISA::Instruction instr;
+
+void Generator::emit_cond(const core::Cond &cond) {
+  // List<Sexp(Keyword(if)), Sexp(cond), Sexp(then), Sexp(else)>
+  // 0. emit PUSH X (will calculate X)
+  // 1. emit condition to program vector
+  // 2. emit CJMP (note length here)
+  // 3. emit (else)
+  // 4. emit JMP Y (will calculate Y)
+  // 5. emit (then)
+  // X = length before (5), Y = length after (5)
+  this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::PUSH});
+  size_t cjmp_idx = this->bytecode.size() - 1; // note the index of jump address
+  emit_expr(*cond.condition);
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::CJMP, .operand = std::nullopt});
+  emit_expr(*cond.otherwise);
+  this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::PUSH});
+  size_t jmp_idx = this->bytecode.size() - 1;
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::JMP, .operand = std::nullopt});
+  size_t X = (jmp_idx + 2) * 9;
+  emit_expr(*cond.then);
+  size_t Y = (this->bytecode.size()) * 9;
+  this->bytecode[cjmp_idx].operand = X;
+  this->bytecode[jmp_idx].operand = Y;
+}
+
+void Generator::emit_expr(const core::Expr &expr) {
   std::visit(
-      [this, &instr](const auto &p) {
+      [this](const auto &p) {
         using T = std::decay_t<decltype(p)>;
-        if constexpr (std::is_same_v<T, uint64_t>) {
-          instr.op = ISA::Operation::PUSH;
-          instr.operand = p;
-          program.push_back(instr);
-        } else if constexpr (std::is_same_v<T, ast::Keyword>) {
-          throw std::invalid_argument("keyword not where expected");
-        } else if constexpr (std::is_same_v<T, bool>) {
-          instr.op = ISA::Operation::PUSH;
-          instr.operand = p ? 1 : 0;
-          program.push_back(instr);
-        } else if constexpr (std::is_same_v<T, std::string>) {
-          throw std::invalid_argument(
-              "function application not where expected");
+        if constexpr (std::is_same_v<T, core::Apply>) {
+          Generator::emit_apply(p);
+        }
+        if constexpr (std::is_same_v<T, core::Lambda>) {
+          Generator::emit_lambda(p);
+        }
+        if constexpr (std::is_same_v<T, core::Const>) {
+          Generator::emit_const(p);
+        }
+        if constexpr (std::is_same_v<T, core::Cond>) {
+          Generator::emit_cond(p);
+        }
+        if constexpr (std::is_same_v<T, core::Var>) {
+          Generator::emit_var(p);
         }
       },
-      sym.value);
+      expr.node);
 }
 
-void Generator::emit_keyword(const ast::List &list) {
-  if (const auto *head_symbol =
-          std::get_if<ast::Symbol>(&list.list.front()->node)) {
-    if (const auto *head_kword =
-            std::get_if<ast::Keyword>(&head_symbol->value)) {
-      switch (*head_kword) {
-      case (ast::Keyword::if_expr):
-        // List<Sexp(Keyword(if)), Sexp(cond), Sexp(then), Sexp(else)>
-        // 0. emit PUSH X (will calculate X)
-        // 1. emit condition to program vector
-        // 2. emit CJMP (note length here)
-        // 3. emit (else)
-        // 4. emit JMP Y (will calculate Y)
-        // 5. emit (then)
-        // X = length before (5), Y = length after (5)
-        this->program.push_back(ISA::Instruction{.op = ISA::Operation::PUSH});
-        size_t cjmp_idx =
-            this->program.size() - 1; // note the index of jump address
-        const auto &cond = *list.list[1];
-        emit_sexp(cond);
-        this->program.push_back(ISA::Instruction{.op = ISA::Operation::CJMP,
-                                                 .operand = std::nullopt});
-        const auto &else_code = *list.list[3];
-        emit_sexp(else_code);
-        this->program.push_back(ISA::Instruction{.op = ISA::Operation::PUSH});
-        size_t jmp_idx = this->program.size() - 1;
-        this->program.push_back(ISA::Instruction{.op = ISA::Operation::JMP,
-                                                 .operand = std::nullopt});
-        const auto &then_code = *list.list[2];
-        size_t X = (jmp_idx + 2) * 9;
-        emit_sexp(then_code);
-        size_t Y = (this->program.size()) * 9;
-        this->program[cjmp_idx].operand = X;
-        this->program[jmp_idx].operand = Y;
-      }
-    }
-  }
-}
-
-void Generator::emit_function(const ast::List &list) {}
-
-void Generator::emit_list(const ast::List &list) {
-  /*
-   * if the list is nonempty, and the first is a keyword, then we interpret
-   * the rest of the list as a keyword dispatch
-   *
-   * if the first is an operation, than we treat the rest of the list as a
-   * function application dispatch
-   *
-   * otherwise it's just a list
-   */
-  if (!list.list.empty()) {
-    if (const auto *head_symbol =
-            std::get_if<ast::Symbol>(&list.list.front()->node)) {
-
-      if (const auto *head_kword =
-              std::get_if<ast::Keyword>(&head_symbol->value)) {
-        emit_keyword(list);
-      } else if (const auto *head_op =
-                     std::get_if<std::string>(&head_symbol->value)) {
-        emit_function(list);
-      }
-    }
-  }
-  for (auto &list_sexp : list.list) {
-    emit_sexp(*list_sexp);
-  }
-}
+void Generator::emit_const(const core::Const &const_var) {};
+void Generator::emit_define(const core::Define &def) {};
+void Generator::emit_lambda(const core::Lambda &lambda) {};
+void Generator::emit_apply(const core::Apply &application) {};
+void Generator::emit_var(const core::Var &variable) {};
