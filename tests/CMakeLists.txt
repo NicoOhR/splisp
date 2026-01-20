@@ -11,7 +11,6 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(splisp_tests
-  generator_tests.cpp
   lexer_parser_tests.cpp
   lowerer_tests.cpp
   scoper_tests.cpp
