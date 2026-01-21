@@ -25,11 +25,10 @@ core::Top core::Lowerer::lower_top(const ast::SExp &sexp) {
       if (const auto kw = std::get_if<ast::Keyword>(&sym->value)) {
         if (*kw == ast::Keyword::define) {
           return lower_definition(sexp);
-        } else {
-          return lower_expr(sexp);
         }
       }
     }
+    return lower_expr(sexp);
   }
   throw std::invalid_argument("unhandled SExp in lower_top");
 }
