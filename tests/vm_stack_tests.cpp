@@ -22,6 +22,8 @@ struct StackTestAccess {
 
 namespace {
 
+constexpr size_t kInstrSize = 9;
+
 Stack make_stack(ISA::Operation op, std::optional<uint64_t> operand = {}) {
   ISA::Instruction instr{op, operand};
   std::vector<ISA::Instruction> program{instr};
@@ -140,20 +142,6 @@ TEST(StackTests, DispatchControlCjmpNotTaken) {
   EXPECT_EQ(data.size(), 0U);
 }
 
-TEST(StackTests, DispatchControlCall) {
-  auto stack = make_stack(ISA::Operation::CALL);
-  auto &data = StackTestAccess::data(stack);
-  auto &returns = StackTestAccess::returns(stack);
-  data.push(12);
-
-  auto state = StackTestAccess::runInstruction(stack);
-  EXPECT_EQ(state, MachineState::OKAY);
-  ASSERT_EQ(returns.size(), 1U);
-  EXPECT_EQ(returns.top(), 0U);
-  EXPECT_EQ(StackTestAccess::pc(stack), 12U);
-  EXPECT_EQ(data.size(), 0U);
-}
-
 TEST(StackTests, DispatchControlRet) {
   auto stack = make_stack(ISA::Operation::RET);
   auto &returns = StackTestAccess::returns(stack);
@@ -215,6 +203,34 @@ TEST(StackTests, DispatchTransferFetch) {
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
   EXPECT_EQ(data.top(), 0x2211U);
+}
+
+TEST(StackTests, DispatchControlMkClosureCallRestoresCapturedOrder) {
+  std::vector<ISA::Instruction> program{
+      {ISA::Operation::MKCLOSURE, 123},
+      {ISA::Operation::CALL, std::nullopt},
+  };
+  std::vector<uint8_t> data_bytes{};
+  Stack stack(std::move(program), std::move(data_bytes));
+
+  auto &data = StackTestAccess::data(stack);
+  data.push(4);
+  data.push(6);
+  data.push(2);
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  ASSERT_EQ(data.size(), 1U);
+  EXPECT_EQ(data.top(), 0U);
+
+  StackTestAccess::pc(stack) += kInstrSize;
+  state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(StackTestAccess::pc(stack), 123U);
+  ASSERT_EQ(data.size(), 2U);
+  EXPECT_EQ(data.top(), 6U);
+  data.pop();
+  EXPECT_EQ(data.top(), 4U);
 }
 
 } // namespace

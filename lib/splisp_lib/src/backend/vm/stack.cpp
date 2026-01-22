@@ -3,6 +3,7 @@
 #include <backend/vm/stack.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 #include <list>
 #include <stdexcept>
 
@@ -305,8 +306,9 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     auto heap_idx = this->data_stack.top();
     data_stack.pop();
     CodeEnv *env = &this->heap[heap_idx];
-    for (size_t i = 0; i < env->captured_vars.size(); i++) {
-      this->data_stack.push(env->captured_vars[i]);
+    for (size_t i = env->captured_vars.size(); i > 0; --i) {
+      std::cout << i << std::endl;
+      this->data_stack.push(env->captured_vars[i - 1]);
     }
     this->pc = env->code_idx;
     break;

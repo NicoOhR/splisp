@@ -79,3 +79,39 @@ TEST(StackProgramTests, ConditionalJump) {
   ASSERT_EQ(data_stack.size(), 1U);
   EXPECT_EQ(data_stack.top(), 1U);
 }
+
+TEST(StackProgramTests, ClosureCapturesRestoreOrderOnCall) {
+  constexpr size_t kClosureStart = 5 * kInstrSize;
+  const std::vector<ISA::Instruction> program{
+      {ISA::Operation::PUSH, 4},
+      {ISA::Operation::PUSH, 6},
+      {ISA::Operation::PUSH, 2},
+      {ISA::Operation::MKCLOSURE, kClosureStart},
+      {ISA::Operation::CALL, std::nullopt},
+      {ISA::Operation::SUB, std::nullopt},
+      {ISA::Operation::HALT, std::nullopt},
+  };
+
+  std::vector<uint8_t> data{};
+  Stack stack(std::move(program), std::move(data));
+
+  MachineState state = MachineState::OKAY;
+  for (size_t i = 0; i < 100; ++i) {
+    const auto prev_pc = StackTestAccess::pc(stack);
+    state = StackTestAccess::runInstruction(stack);
+    if (state == MachineState::HALT) {
+      break;
+    }
+    if (state != MachineState::OKAY) {
+      break;
+    }
+    if (StackTestAccess::pc(stack) == prev_pc) {
+      StackTestAccess::pc(stack) += kInstrSize;
+    }
+  }
+
+  EXPECT_EQ(state, MachineState::HALT);
+  auto &data_stack = StackTestAccess::data(stack);
+  ASSERT_EQ(data_stack.size(), 1U);
+  EXPECT_EQ(data_stack.top(), 2U);
+}
