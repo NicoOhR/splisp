@@ -16,6 +16,11 @@ enum MachineState {
   STACK_UNDERFLOW
 };
 
+struct CodeEnv {
+  uint64_t code_idx;
+  std::vector<uint64_t> captured_vars;
+};
+
 class Stack {
 public:
   Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data);
@@ -38,6 +43,8 @@ private:
 
   size_t pc = 0;
   MachineState machine_state = MachineState::OKAY;
+
+  std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
   std::stack<uint64_t> data_stack;
   std::stack<uint64_t> return_stack;

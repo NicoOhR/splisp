@@ -1,3 +1,4 @@
+#include "backend/isa/isa.hpp"
 #include <algorithm>
 #include <backend/vm/stack.hpp>
 #include <cstddef>
@@ -301,9 +302,13 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::CALL): {
     this->return_stack.push(this->pc);
-    auto dest = this->data_stack.top();
+    auto heap_idx = this->data_stack.top();
     data_stack.pop();
-    this->pc = dest;
+    CodeEnv *env = &this->heap[heap_idx];
+    for (size_t i = 0; i < env->captured_vars.size(); i++) {
+      this->data_stack.push(env->captured_vars[i]);
+    }
+    this->pc = env->code_idx;
     break;
   }
   case (ISA::Operation::RET): {
@@ -337,6 +342,21 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
   }
   case (ISA::Operation::HALT): {
     return setState(MachineState::HALT);
+  }
+  case (ISA::Operation::MKCLOSURE): {
+    CodeEnv ret;
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    auto n = this->data_stack.top();
+    this->data_stack.pop();
+    for (size_t i = 0; i < n; i++) {
+      auto a = this->data_stack.top();
+      this->data_stack.pop();
+      ret.captured_vars.push_back(a);
+    }
+    ret.code_idx = operand;
+    this->heap.push_back(ret);
+    this->data_stack.push(this->heap.size() - 1);
+    break;
   }
   default:
     throw std::invalid_argument(

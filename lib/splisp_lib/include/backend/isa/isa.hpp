@@ -41,7 +41,8 @@ enum class Operation : uint8_t {
   JMP,
   CJMP,
   WAIT,
-  HALT
+  HALT,
+  MKCLOSURE,
 };
 
 enum class OperandKind { NONE, U64, ADD };
@@ -62,7 +63,8 @@ struct Spec {
   std::size_t pushes;
 };
 
-constexpr std::size_t op_count = static_cast<std::size_t>(Operation::HALT) + 1;
+constexpr std::size_t op_count =
+    static_cast<std::size_t>(Operation::MKCLOSURE) + 1;
 inline constexpr std::array<Spec, op_count> spec_list{{
     {"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
     {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
@@ -97,6 +99,7 @@ inline constexpr std::array<Spec, op_count> spec_list{{
     {"cjmp", OperandKind::ADD, OperationKind::CONTROL, 1, 0},
     {"wait", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
     {"halt", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
+    {"mkclosure", OperandKind::U64, OperationKind::CONTROL, 0, 0},
 }};
 
 struct Instruction {
