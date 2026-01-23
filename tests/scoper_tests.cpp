@@ -48,17 +48,29 @@ ast::AST parse_program(const std::string &source) {
   return parser.parse();
 }
 
+size_t builtin_count() { return builtin.size(); }
+
+bool has_all_builtins(const SymbolTable &table) {
+  for (const auto &name : builtin) {
+    if (!table.symbols.contains(name)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 TEST(ScoperTests, DefineRegistersFunctionBindingInRoot) {
   ast::AST ast = parse_program("(define add (x y) (+ x y))");
 
   Scoper scoper;
   scoper.run(ast);
 
-  ASSERT_EQ(scoper.root.symbols.size(), 1U);
+  ASSERT_EQ(scoper.root.symbols.size(), builtin_count() + 1U);
+  EXPECT_TRUE(has_all_builtins(scoper.root));
   const auto it = scoper.root.symbols.find("add");
   ASSERT_NE(it, scoper.root.symbols.end());
   EXPECT_EQ(it->second.kind, BindingKind::FUNC);
-  EXPECT_EQ(it->second.value, 0U);
+  EXPECT_EQ(it->second.value, builtin_count());
 }
 
 TEST(ScoperTests, LambdaDoesNotPolluteRootBindings) {
@@ -67,7 +79,8 @@ TEST(ScoperTests, LambdaDoesNotPolluteRootBindings) {
   Scoper scoper;
   scoper.run(ast);
 
-  EXPECT_TRUE(scoper.root.symbols.empty());
+  EXPECT_EQ(scoper.root.symbols.size(), builtin_count());
+  EXPECT_TRUE(has_all_builtins(scoper.root));
 }
 
 TEST(ScoperTests, NestedLambdaScopesAssignSequentialIds) {
@@ -82,7 +95,7 @@ TEST(ScoperTests, NestedLambdaScopesAssignSequentialIds) {
   const auto outer_it = outer.symbols.find("x");
   ASSERT_NE(outer_it, outer.symbols.end());
   EXPECT_EQ(outer_it->second.kind, BindingKind::VALUE);
-  EXPECT_EQ(outer_it->second.value, 0U);
+  EXPECT_EQ(outer_it->second.value, builtin_count());
 
   ASSERT_EQ(outer.children.size(), 1U);
   const SymbolTable &inner = *outer.children[0];
@@ -93,8 +106,8 @@ TEST(ScoperTests, NestedLambdaScopesAssignSequentialIds) {
   ASSERT_NE(z_it, inner.symbols.end());
   EXPECT_EQ(y_it->second.kind, BindingKind::VALUE);
   EXPECT_EQ(z_it->second.kind, BindingKind::VALUE);
-  EXPECT_EQ(y_it->second.value, 1U);
-  EXPECT_EQ(z_it->second.value, 2U);
+  EXPECT_EQ(y_it->second.value, builtin_count() + 1U);
+  EXPECT_EQ(z_it->second.value, builtin_count() + 2U);
 }
 
 TEST(ScoperTests, TopLevelLambdasAssignSequentialIds) {
@@ -115,8 +128,8 @@ TEST(ScoperTests, TopLevelLambdasAssignSequentialIds) {
   ASSERT_NE(b_it, second.symbols.end());
   EXPECT_EQ(a_it->second.kind, BindingKind::VALUE);
   EXPECT_EQ(b_it->second.kind, BindingKind::VALUE);
-  EXPECT_EQ(a_it->second.value, 0U);
-  EXPECT_EQ(b_it->second.value, 1U);
+  EXPECT_EQ(a_it->second.value, builtin_count());
+  EXPECT_EQ(b_it->second.value, builtin_count() + 1U);
 }
 
 TEST(ScoperTests, LambdaScopeIdsAnnotatedOnAstNodes) {
@@ -174,11 +187,11 @@ TEST(ScoperTests, SearchFindsNearestBindingInParentScopes) {
 
   const Binding inner_binding = scoper.search("y", inner.scope_id);
   EXPECT_EQ(inner_binding.kind, BindingKind::VALUE);
-  EXPECT_EQ(inner_binding.value, 1U);
+  EXPECT_EQ(inner_binding.value, builtin_count() + 1U);
 
   const Binding outer_binding = scoper.search("x", inner.scope_id);
   EXPECT_EQ(outer_binding.kind, BindingKind::VALUE);
-  EXPECT_EQ(outer_binding.value, 0U);
+  EXPECT_EQ(outer_binding.value, builtin_count());
 }
 
 TEST(ScoperTests, ResolveRewritesSymbolsToBindingIds) {
@@ -196,7 +209,7 @@ TEST(ScoperTests, ResolveRewritesSymbolsToBindingIds) {
   ASSERT_NE(body_item, nullptr);
   const auto *body_id = as_symbol_id(*body_item);
   ASSERT_NE(body_id, nullptr);
-  EXPECT_EQ(body_id->id, 0U);
+  EXPECT_EQ(body_id->id, builtin_count());
 }
 
 } // namespace

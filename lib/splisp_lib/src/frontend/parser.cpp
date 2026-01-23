@@ -161,7 +161,7 @@ ast::List Parser::create_lambda(List &list) {
 }
 
 List Parser::create_define(List &list) {
-  // assumed form (define name (args) (body))
+  // assumed form (define name (args) (body)) or (define name body)
   //(define (name args) (body)) -> (define name (lambda (args) (body)))
   if (list.list.size() < 3) {
     throw std::invalid_argument("Define requires a name and body");
@@ -187,12 +187,20 @@ List Parser::create_define(List &list) {
     args = std::make_unique<SExp>(std::move(args_sexp));
     body = std::move(list.list.at(2));
   } else {
-    if (list.list.size() < 4) {
-      throw std::invalid_argument("Define requires args and body");
-    }
     name = std::move(list.list.at(1));
     if (!ast::to_string(*name)) {
       throw std::invalid_argument("Invalid function name");
+    }
+    if (list.list.size() == 3) {
+      body = std::move(list.list.at(2));
+      List ret;
+      ret.list.push_back(std::move(list.list.at(0)));
+      ret.list.push_back(std::move(name));
+      ret.list.push_back(std::move(body));
+      return ret;
+    }
+    if (list.list.size() < 4) {
+      throw std::invalid_argument("Define requires args and body");
     }
     args = std::move(list.list.at(2));
     body = std::move(list.list.at(3));

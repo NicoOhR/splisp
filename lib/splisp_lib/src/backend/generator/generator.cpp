@@ -1,10 +1,7 @@
 #include <backend/generator/generator.hpp>
 #include <backend/isa/isa.hpp>
-#include <cstdint>
+#include <backend/vm/stack.hpp>
 #include <frontend/ast.hpp>
-#include <iostream>
-#include <stdexcept>
-#include <string>
 #include <type_traits>
 #include <variant>
 
@@ -76,8 +73,16 @@ void Generator::emit_expr(const core::Expr &expr) {
       expr.node);
 }
 
-void Generator::emit_const(const core::Const &const_var) {};
-void Generator::emit_define(const core::Define &def) {};
+void Generator::emit_const(const core::Const &const_var) {
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::PUSH, .operand = const_var.value});
+};
+void Generator::emit_define(const core::Define &def) {
+  // this->bytecode.push_back(
+  //     ISA::Instruction{.op = ISA::Operation::PUSH, .operand = n});
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::MKCLOSURE, .operand = def.name});
+};
 void Generator::emit_lambda(const core::Lambda &lambda) {};
 void Generator::emit_apply(const core::Apply &application) {};
 void Generator::emit_var(const core::Var &variable) {};
