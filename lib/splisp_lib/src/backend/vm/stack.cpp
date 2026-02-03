@@ -307,7 +307,6 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     data_stack.pop();
     CodeEnv *env = &this->heap[heap_idx];
     for (size_t i = env->captured_vars.size(); i > 0; --i) {
-      std::cout << i << std::endl;
       this->data_stack.push(env->captured_vars[i - 1]);
     }
     this->pc = env->code_idx;
@@ -358,6 +357,19 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     ret.code_idx = operand;
     this->heap.push_back(ret);
     this->data_stack.push(this->heap.size() - 1);
+    break;
+  }
+  case (ISA::Operation::MKGLOBAL): {
+    // read from the operand the global map label
+    // add to the map the current PC
+    // code generator should then emit the rhs of the global + RET
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    break;
+  }
+  case (ISA::Operation::LOADGLOBAL): {
+    // essentially a non-closure call, read the symbol label
+    // push the current pc to the return stack
+    // set the program counter to the read value
     break;
   }
   default:

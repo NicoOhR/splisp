@@ -1,8 +1,10 @@
 #pragma once
 
+#include "frontend/core.hpp"
 #include <backend/isa/isa.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <stack>
 #include <vector>
 
@@ -44,6 +46,7 @@ private:
   size_t pc = 0;
   MachineState machine_state = MachineState::OKAY;
 
+  std::map<core::SymbolId, size_t> global_tbl;
   std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
   std::stack<uint64_t> data_stack;

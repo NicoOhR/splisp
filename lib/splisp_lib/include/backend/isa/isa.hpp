@@ -43,6 +43,8 @@ enum class Operation : uint8_t {
   WAIT,
   HALT,
   MKCLOSURE,
+  MKGLOBAL,
+  LOADGLOBAL,
 };
 
 enum class OperandKind { NONE, U64, ADD };
@@ -64,7 +66,7 @@ struct Spec {
 };
 
 constexpr std::size_t op_count =
-    static_cast<std::size_t>(Operation::MKCLOSURE) + 1;
+    static_cast<std::size_t>(Operation::LOADGLOBAL) + 1;
 inline constexpr std::array<Spec, op_count> spec_list{{
     {"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
     {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
@@ -100,6 +102,8 @@ inline constexpr std::array<Spec, op_count> spec_list{{
     {"wait", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
     {"halt", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
     {"mkclosure", OperandKind::U64, OperationKind::CONTROL, 0, 0},
+    {"mkglobal", OperandKind::U64, OperationKind::CONTROL, 1, 0}, 
+    {"loadglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0}
 }};
 
 struct Instruction {
