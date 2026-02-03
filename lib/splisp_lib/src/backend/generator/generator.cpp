@@ -16,7 +16,7 @@ void Generator::emit_top(const core::Top &top) {
       [this](const auto &p) {
         using T = std::decay_t<decltype(p)>;
         if constexpr (std::is_same_v<T, core::Define>) {
-          emit_define(p);
+          emit_top_define(p);
         } else if constexpr (std::is_same_v<T, core::Expr>) {
           emit_expr(p);
         }
@@ -77,12 +77,14 @@ void Generator::emit_const(const core::Const &const_var) {
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::PUSH, .operand = const_var.value});
 };
-void Generator::emit_define(const core::Define &def) {
+void Generator::emit_top_define(const core::Define &def) {
   // this->bytecode.push_back(
   //     ISA::Instruction{.op = ISA::Operation::PUSH, .operand = n});
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::MKCLOSURE, .operand = def.name});
 };
+
+void Generator::emit_define(const core::Define &def){};
 void Generator::emit_lambda(const core::Lambda &lambda) {};
 void Generator::emit_apply(const core::Apply &application) {};
 void Generator::emit_var(const core::Var &variable) {};
