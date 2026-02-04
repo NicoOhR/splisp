@@ -41,7 +41,7 @@ struct Define {
 };
 
 struct Expr {
-  std::variant<Apply, Lambda, Const, Cond, Var> node;
+  std::variant<Apply, Define, Lambda, Const, Cond, Var> node;
 };
 
 using Top = std::variant<Define, Expr>;

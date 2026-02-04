@@ -63,6 +63,10 @@ core::Expr core::Lowerer::lower_expr(const ast::SExp &sexp) {
           ret.node = lower_lambda(sexp);
           return ret;
         }
+        case (ast::Keyword::define): {
+          ret.node = lower_definition(sexp);
+          return ret;
+        }
         default:
           break;
         }
@@ -328,6 +332,8 @@ void print_expr(const Expr &expr, int level) {
           print_cond(node, level);
         } else if constexpr (std::is_same_v<T, Var>) {
           print_var(node, level);
+        } else if constexpr (std::is_same_v<T, Define>) {
+          print_define(node, level);
         }
       },
       expr.node);
