@@ -161,14 +161,14 @@ ast::List Parser::create_lambda(List &list) {
 }
 
 List Parser::create_define(List &list) {
-  // assumed form (define name (args) (body)) or (define name body)
-  //(define (name args) (body)) -> (define name (lambda (args) (body)))
+  // supported forms:
+  // (define name body)
+  // (define (name args...) body) -> (define name (lambda (args...) body))
   if (list.list.size() < 3) {
     throw std::invalid_argument("Define requires a name and body");
   }
 
   std::unique_ptr<SExp> name;
-  std::unique_ptr<SExp> args;
   std::unique_ptr<SExp> body;
 
   if (auto *signature = std::get_if<ast::List>(&list.list.at(1)->node)) {
@@ -184,43 +184,40 @@ List Parser::create_define(List &list) {
     for (size_t i = 1; i < signature->list.size(); ++i) {
       args_list.list.push_back(std::move(signature->list.at(i)));
     }
-    args = std::make_unique<SExp>(std::move(args_sexp));
+    auto args = std::make_unique<SExp>(std::move(args_sexp));
     body = std::move(list.list.at(2));
-  } else {
-    name = std::move(list.list.at(1));
-    if (!ast::to_string(*name)) {
-      throw std::invalid_argument("Invalid function name");
+    if (!std::get_if<ast::List>(&args->node)) {
+      throw std::invalid_argument("Args Should be a List");
     }
-    if (list.list.size() == 3) {
-      body = std::move(list.list.at(2));
-      List ret;
-      ret.list.push_back(std::move(list.list.at(0)));
-      ret.list.push_back(std::move(name));
-      ret.list.push_back(std::move(body));
-      return ret;
-    }
-    if (list.list.size() < 4) {
-      throw std::invalid_argument("Define requires args and body");
-    }
-    args = std::move(list.list.at(2));
-    body = std::move(list.list.at(3));
+
+    List lambda_list;
+    lambda_list.list.push_back(
+        std::make_unique<SExp>(SExp{.node = Symbol{Keyword::lambda}}));
+    lambda_list.list.push_back(std::move(args));
+    lambda_list.list.push_back(std::move(body));
+
+    List ret;
+    ret.list.push_back(std::move(list.list.at(0)));
+    ret.list.push_back(std::move(name));
+    ret.list.push_back(
+        std::make_unique<SExp>(SExp{.node = std::move(lambda_list)}));
+    return ret;
   }
 
-  if (!std::get_if<ast::List>(&args->node)) {
-    throw std::invalid_argument("Args Should be a List");
+  name = std::move(list.list.at(1));
+  if (!ast::to_string(*name)) {
+    throw std::invalid_argument("Invalid function name");
+  }
+  if (list.list.size() != 3) {
+    throw std::invalid_argument(
+        "Function definitions must use (define (name args...) body)");
   }
 
-  List lambda_list;
-  lambda_list.list.push_back(
-      std::make_unique<SExp>(SExp{.node = Symbol{Keyword::lambda}}));
-  lambda_list.list.push_back(std::move(args));
-  lambda_list.list.push_back(std::move(body));
-
+  body = std::move(list.list.at(2));
   List ret;
   ret.list.push_back(std::move(list.list.at(0)));
   ret.list.push_back(std::move(name));
-  ret.list.push_back(
-      std::make_unique<SExp>(SExp{.node = std::move(lambda_list)}));
+  ret.list.push_back(std::move(body));
   return ret;
 }
 

@@ -168,7 +168,7 @@ TEST(ParserTests, UnknownAtomBecomesSymbol) {
 }
 
 TEST(ParserTests, DefineCreatesFunctionNode) {
-  Parser parser(Lexer("(define add (x y) (+ x y))"));
+  Parser parser(Lexer("(define (add x y) (+ x y))"));
   ast::AST ast = parser.parse();
 
   ast::print_ast(ast);
@@ -305,7 +305,7 @@ TEST(ParserTests, DefineShorthandDesugarsToLambdaBinding) {
 }
 
 TEST(ParserTests, NestedLetInDefineResolves) {
-  Parser parser(Lexer("(define add (x y) (let ((z 1)) (+ z y)))"));
+  Parser parser(Lexer("(define (add x y) (let ((z 1)) (+ z y)))"));
   ast::AST ast = parser.parse();
 
   ASSERT_EQ(ast.size(), 1U);

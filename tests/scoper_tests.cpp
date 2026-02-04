@@ -60,7 +60,7 @@ bool has_all_builtins(const SymbolTable &table) {
 }
 
 TEST(ScoperTests, DefineRegistersFunctionBindingInRoot) {
-  ast::AST ast = parse_program("(define add (x y) (+ x y))");
+  ast::AST ast = parse_program("(define (add x y) (+ x y))");
 
   Scoper scoper;
   scoper.run(ast);

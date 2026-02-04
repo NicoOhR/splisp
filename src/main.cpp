@@ -6,12 +6,12 @@
 #include <string>
 
 int main() {
-  // std::string program = "(define add (x y) (+ x y) (+ x 1)) (add 2 3) (add 1
+  // std::string program = "(define (add x y) (+ x y) (+ x 1)) (add 2 3) (add 1
   // "
   //                       "2) (define x 2) (add x 3)";
   std::string program = "(define x 2) \
-                         (define top (y) \
-                          (define nested () \
+                         (define (top y) \
+                          (define (nested) \
                            (lambda (y) (+ x y))))\
                          (top (3))";
   Lexer lex(program);
