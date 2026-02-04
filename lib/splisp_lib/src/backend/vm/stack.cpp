@@ -360,16 +360,21 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     break;
   }
   case (ISA::Operation::MKGLOBAL): {
-    // read from the operand the global map label
-    // add to the map the current PC
-    // code generator should then emit the rhs of the global + RET
+    // read from the operand the global map label, error check against repeat
+    // labels (?)
+    // add to the map the current PC code generator should then emit + 1
+    // the rhs of the global + RET
     const uint64_t operand = read_operand(this->program_mem, this->pc);
+    this->global_tbl[operand] = this->pc + 1;
     break;
   }
   case (ISA::Operation::LOADGLOBAL): {
     // essentially a non-closure call, read the symbol label
     // push the current pc to the return stack
     // set the program counter to the read value
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    this->return_stack.push(this->pc);
+    this->pc = this->global_tbl[operand];
     break;
   }
   default:

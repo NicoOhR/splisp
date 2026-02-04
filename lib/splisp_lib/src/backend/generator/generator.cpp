@@ -78,13 +78,18 @@ void Generator::emit_const(const core::Const &const_var) {
       ISA::Instruction{.op = ISA::Operation::PUSH, .operand = const_var.value});
 };
 void Generator::emit_top_define(const core::Define &def) {
-  // this->bytecode.push_back(
-  //     ISA::Instruction{.op = ISA::Operation::PUSH, .operand = n});
+  // function which defines top level (global) defintion
   this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::MKCLOSURE, .operand = def.name});
+      ISA::Instruction{.op = ISA::Operation::MKGLOBAL, .operand = def.name});
+  Generator::emit_expr(*def.rhs);
+  this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::RET});
 };
 
-void Generator::emit_define(const core::Define &def){};
+void Generator::emit_define(const core::Define &def) {
+  // function which emits scoped definitions
+};
 void Generator::emit_lambda(const core::Lambda &lambda) {};
 void Generator::emit_apply(const core::Apply &application) {};
-void Generator::emit_var(const core::Var &variable) {};
+void Generator::emit_var(const core::Var &variable) {
+
+};
