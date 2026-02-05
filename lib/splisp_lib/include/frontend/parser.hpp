@@ -16,7 +16,7 @@ public:
 private:
   std::unique_ptr<SExp> create_sexp();
   List create_list();
-  void resolve_forms(SExp &rsexp);
+  void resolve_forms(SExp &rsexp, bool is_top_level);
   ast::List create_define(List &list);
   ast::List create_lambda(List &list);
   ast::SExp create_let(List &list);

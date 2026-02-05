@@ -67,6 +67,10 @@ void Scoper::run(ast::AST &ast) {
                     break;
                   }
                   case (ast::Keyword::define): {
+                    if (parent != &scoper->root) {
+                      throw std::invalid_argument(
+                          "Define is only allowed at the top level");
+                    }
                     // List(Kword(Define) Symbol(name) ...)
                     if (auto *name =
                             std::get_if<ast::Symbol>(&node.list.at(1)->node)) {
@@ -76,32 +80,6 @@ void Scoper::run(ast::AST &ast) {
                             Binding{.kind = BindingKind::FUNC,
                                     .value = scoper->next_binding_id++};
                       }
-                    }
-                    if (auto *args =
-                            std::get_if<ast::List>(&node.list.at(2)->node)) {
-                      std::unordered_map<std::string, Binding> syms;
-                      for (size_t i = 0; i < args->list.size(); i++) {
-                        if (auto *arg = std::get_if<ast::Symbol>(
-                                &args->list.at(i)->node)) {
-                          if (auto *ident =
-                                  std::get_if<std::string>(&arg->value)) {
-                            syms[*ident] =
-                                Binding{.kind = BindingKind::VALUE,
-                                        .value = scoper->next_binding_id++};
-                          }
-                        }
-                      }
-                      auto child_scope = std::make_unique<SymbolTable>();
-                      child_scope->scope_id = ++curr_idx;
-                      child_scope->symbols = std::move(syms);
-                      child_scope->parent = parent;
-                      sexp.scope_id = curr_idx;
-                      SymbolTable *child_ptr = child_scope.get();
-                      parent->children.push_back(std::move(child_scope));
-                      for (auto &child : node.list) {
-                        self(*child, child_ptr);
-                      }
-                      return;
                     }
                     break;
                   }
@@ -144,8 +122,7 @@ void Scoper::resolve(ast::AST &ast) {
             if (auto *sym =
                     std::get_if<ast::Symbol>(&node.list.front()->node)) {
               if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
-                if (*kw == ast::Keyword::lambda ||
-                    *kw == ast::Keyword::define) {
+                if (*kw == ast::Keyword::lambda) {
                   if (sexp.scope_id) {
                     for (size_t i = 1; i < node.list.size(); i++) {
                       self(*node.list.at(i), *sexp.scope_id);

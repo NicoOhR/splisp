@@ -64,8 +64,7 @@ core::Expr core::Lowerer::lower_expr(const ast::SExp &sexp) {
           return ret;
         }
         case (ast::Keyword::define): {
-          ret.node = lower_definition(sexp);
-          return ret;
+          throw std::invalid_argument("Define is only allowed at the top level");
         }
         default:
           break;

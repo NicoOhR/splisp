@@ -19,7 +19,7 @@ AST Parser::parse() {
     ast.push_back(create_sexp());
   }
   for (auto &sexp : ast) {
-    resolve_forms(*sexp);
+    resolve_forms(*sexp, true);
   }
   return ast;
 }
@@ -94,9 +94,9 @@ std::unique_ptr<SExp> Parser::create_sexp() {
   throw std::logic_error("strange construction");
 }
 
-void Parser::resolve_forms(SExp &sexp) {
+void Parser::resolve_forms(SExp &sexp, bool is_top_level) {
   std::visit(
-      [this, &sexp](auto &p) {
+      [this, &sexp, is_top_level](auto &p) {
         using T = std::decay_t<decltype(p)>;
         if constexpr (std::is_same_v<T, ast::Symbol>) {
           return;
@@ -107,10 +107,14 @@ void Parser::resolve_forms(SExp &sexp) {
               if (auto *kw = std::get_if<ast::Keyword>(&sym->value)) {
                 switch (*kw) {
                 case (ast::Keyword::define): {
+                  if (!is_top_level) {
+                    throw std::invalid_argument(
+                        "Define is only allowed at the top level");
+                  }
                   sexp.node = create_define(p);
                   if (auto *list = std::get_if<ast::List>(&sexp.node)) {
                     for (auto &elem : list->list) {
-                      resolve_forms(*elem);
+                      resolve_forms(*elem, false);
                     }
                   }
                   return;
@@ -119,14 +123,14 @@ void Parser::resolve_forms(SExp &sexp) {
                   sexp.node = create_lambda(p);
                   if (auto *list = std::get_if<ast::List>(&sexp.node)) {
                     for (auto &elem : list->list) {
-                      resolve_forms(*elem);
+                      resolve_forms(*elem, false);
                     }
                   }
                   return;
                 }
                 case (ast::Keyword::let): {
                   sexp = create_let(p);
-                  resolve_forms(sexp);
+                  resolve_forms(sexp, false);
                   return;
                 }
                 default: {
@@ -137,7 +141,7 @@ void Parser::resolve_forms(SExp &sexp) {
             }
           }
           for (auto &elem : p.list) {
-            resolve_forms(*elem);
+            resolve_forms(*elem, false);
           }
         }
       },

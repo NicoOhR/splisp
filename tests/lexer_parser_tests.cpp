@@ -304,6 +304,11 @@ TEST(ParserTests, DefineShorthandDesugarsToLambdaBinding) {
   EXPECT_EQ(*op_name, "+");
 }
 
+TEST(ParserTests, DefineInsideLambdaThrows) {
+  Parser parser(Lexer("(lambda (x) (define y 1))"));
+  EXPECT_THROW((void)parser.parse(), std::invalid_argument);
+}
+
 TEST(ParserTests, NestedLetInDefineResolves) {
   Parser parser(Lexer("(define (add x y) (let ((z 1)) (+ z y)))"));
   ast::AST ast = parser.parse();
