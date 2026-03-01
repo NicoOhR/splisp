@@ -9,11 +9,7 @@
 - Add a label/fixup pass so `define` can reference function entry addresses.
 - (Optional) Add debug map `pc -> source line` separate from control-flow labels.
 
-## Define
-- Allow for internal defines
-
 ## set! scoping
-- Confirm `set!` does not introduce a new lexical scope.
 - In `Scoper::resolve`, treat `(set! name expr)` as:
   - Resolve `name` like any other symbol in the current scope chain.
   - Recurse into `expr`.

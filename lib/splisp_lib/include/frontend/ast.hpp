@@ -12,6 +12,7 @@ enum Keyword { if_expr, let, letrec, lambda, define, set };
 
 struct SExp;
 
+// this needs to be shared with core
 struct SymbolID {
   uint64_t id;
 };

@@ -59,6 +59,7 @@ void print_apply(const Apply &apply, int level);
 void print_lambda(const Lambda &lambda, int level);
 void print_cond(const Cond &cond, int level);
 void print_define(const Define &defn, int level);
+void print_set(const Set &set, int level);
 void print_expr(const Expr &expr, int level);
 void print_top(const Top &top, int level);
 void print_program(const Program &program);
@@ -76,6 +77,7 @@ private:
   Apply lower_apply(const ast::SExp &sexp);
   Lambda lower_lambda(const ast::SExp &sexp);
   Cond lower_condition(const ast::SExp &sexp);
+  Set lower_set(const ast::SExp &sexp);
 
   Program program_;
 };

@@ -63,8 +63,13 @@ core::Expr core::Lowerer::lower_expr(const ast::SExp &sexp) {
           ret.node = lower_lambda(sexp);
           return ret;
         }
+        case (ast::Keyword::set): {
+          ret.node = lower_set(sexp);
+          return ret;
+        }
         case (ast::Keyword::define): {
-          throw std::invalid_argument("Define is only allowed at the top level");
+          throw std::invalid_argument(
+              "Define is only allowed at the top level");
         }
         default:
           break;
@@ -100,6 +105,28 @@ core::Apply core::Lowerer::lower_apply(const ast::SExp &sexp) {
     return ret;
   }
   throw std::invalid_argument("Invalid application parsed");
+}
+
+core::Set core::Lowerer::lower_set(const ast::SExp &sexp) {
+  core::Set ret;
+  if (const auto lst = std::get_if<ast::List>(&sexp.node)) {
+    if (lst->list.size() != 3) {
+      throw std::invalid_argument("set! requires a name and rhs expression");
+    }
+    if (const auto sym = std::get_if<ast::Symbol>(&lst->list.at(1)->node)) {
+      if (const auto name = std::get_if<ast::SymbolID>(&sym->value)) {
+        ret.name = SymbolId(name->id);
+      } else {
+        throw std::invalid_argument("set! name must resolve to a symbol id");
+      }
+    } else {
+      throw std::invalid_argument("set! name must be a symbol");
+    }
+    ret.rhs = std::make_unique<core::Expr>(
+        core::Lowerer::lower_expr(*lst->list.at(2)));
+    return ret;
+  }
+  throw std::invalid_argument("Invalid set! parsed");
 }
 
 core::Const core::Lowerer::lower_const(const ast::SExp &sexp) {
@@ -317,6 +344,27 @@ void print_define(const Define &defn, int level) {
   }
 }
 
+void print_set(const Set &set, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Set";
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Name " << set.name;
+
+  std::cout << std::endl;
+  print_indent(level + 1);
+  std::cout << "Rhs";
+  if (set.rhs) {
+    print_expr(*set.rhs, level + 2);
+  } else {
+    std::cout << std::endl;
+    print_indent(level + 2);
+    std::cout << "<null>";
+  }
+}
+
 void print_expr(const Expr &expr, int level) {
   std::visit(
       [level](const auto &node) {
@@ -333,6 +381,8 @@ void print_expr(const Expr &expr, int level) {
           print_var(node, level);
         } else if constexpr (std::is_same_v<T, Define>) {
           print_define(node, level);
+        } else if constexpr (std::is_same_v<T, Set>) {
+          print_set(node, level);
         }
       },
       expr.node);

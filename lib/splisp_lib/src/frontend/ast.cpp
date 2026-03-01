@@ -64,6 +64,9 @@ std::string print_keyword(const Keyword kword) {
   case (Keyword::let): {
     return "let";
   }
+  case (Keyword::set): {
+    return "set!";
+  }
   }
   throw std::invalid_argument("Keyword not recogonized");
 }

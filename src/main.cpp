@@ -11,7 +11,7 @@ int main() {
   //                       "2) (define x 2) (add x 3)";
   // std::string program =
   //     "(letrec ((f (lambda (x) (g x)) (g lambda (x) (+ x 1))))) (f 20)";
-  std::string program = "(letrec ((x 2) (y 3) (z 1)) (+ (+ x y) z))";
+  std::string program = "(let ((x 1)) (set! x (+ x 1)) x)";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

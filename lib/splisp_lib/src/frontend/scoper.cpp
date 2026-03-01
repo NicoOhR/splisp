@@ -83,16 +83,6 @@ void Scoper::run(ast::AST &ast) {
                     }
                     break;
                   }
-                  case (ast::Keyword::set): {
-                    // List(Kword(set!) Symbol(name) Expr(rhs))
-                    // need to resolve name
-                    if (auto *name =
-                            std::get_if<ast::Symbol>(&node.list.at(1)->node)) {
-                      if (auto *ident =
-                              std::get_if<std::string>(&name->value)) {
-                      }
-                    }
-                  }
                   default:
                     break;
                   }
@@ -140,6 +130,11 @@ void Scoper::resolve(ast::AST &ast) {
                     return;
                   }
                 }
+                // if (*kw == ast::Keyword::set) {
+                //   //(Kword(Set) Symbol(Name) SExp(rhs)) -> (Kword(Set)
+                //   SymbolID
+                //   // SExp(rhs))
+                // }
               }
             }
             for (size_t i = 0; i < node.list.size(); i++) {
