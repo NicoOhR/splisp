@@ -1,13 +1,18 @@
-add_library(splisp_lib STATIC
+set(SPLISP_LIB_SOURCES
   src/frontend/ast.cpp
   src/frontend/lexer.cpp
   src/frontend/parser.cpp
   src/frontend/scoper.cpp
   src/frontend/core.cpp
   src/backend/generator/generator.cpp
-  src/backend/vm/stack.cpp
   src/backend/isa/isa.cpp
 )
+
+if(SPLISP_BUILD_VM)
+  list(APPEND SPLISP_LIB_SOURCES src/backend/vm/stack.cpp)
+endif()
+
+add_library(splisp_lib STATIC ${SPLISP_LIB_SOURCES})
 
 find_package(Boost 1.74 REQUIRED)
 target_link_libraries(splisp_lib PRIVATE Boost::boost)

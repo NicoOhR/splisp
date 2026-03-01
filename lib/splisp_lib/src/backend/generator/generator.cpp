@@ -1,6 +1,5 @@
 #include <backend/generator/generator.hpp>
 #include <backend/isa/isa.hpp>
-#include <backend/vm/stack.hpp>
 #include <frontend/ast.hpp>
 #include <type_traits>
 #include <variant>

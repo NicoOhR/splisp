@@ -352,10 +352,10 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     for (size_t i = 0; i < n; i++) {
       auto a = this->data_stack.top();
       this->data_stack.pop();
-      ret.captured_vars.push_back(a);
+      ret.captured_vars.push(a);
     }
     ret.code_idx = operand;
-    this->heap.push_back(ret);
+    this->heap.push(ret);
     this->data_stack.push(this->heap.size() - 1);
     break;
   }
