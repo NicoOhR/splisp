@@ -1,6 +1,7 @@
 #pragma once
 
 #include "frontend/core.hpp"
+#include <algorithm>
 #include <backend/isa/isa.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -18,9 +19,13 @@ enum MachineState {
   STACK_UNDERFLOW
 };
 
+struct Cell {
+  uint64_t value;
+};
+
 struct CodeEnv {
   uint64_t code_idx;
-  std::vector<uint64_t> captured_vars;
+  std::vector<std::unique_ptr<Cell>> captured_vars;
 };
 
 class Stack {
@@ -46,7 +51,7 @@ private:
   size_t pc = 0;
   MachineState machine_state = MachineState::OKAY;
 
-  std::map<core::SymbolId, size_t> global_tbl;
+  std::map<core::SymbolId, std::unique_ptr<Cell>> global_tbl;
   std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
   std::stack<uint64_t> data_stack;

@@ -133,6 +133,10 @@ void Parser::resolve_forms(SExp &sexp, bool is_top_level) {
                   resolve_forms(sexp, false);
                   return;
                 }
+                case (ast::Keyword::letrec): {
+                  sexp = create_letrec(p);
+                  resolve_forms(sexp, false);
+                }
                 default: {
                   break;
                 }
@@ -258,6 +262,28 @@ SExp Parser::create_let(List &list) {
       std::make_unique<SExp>(SExp{.node = std::move(lambda_list)}));
   desugared.list.push_back(std::make_unique<SExp>(std::move(values)));
   return SExp{.node = std::move(desugared)};
+}
+
+SExp Parser::create_letrec(List &list) {
+  // letrec -> let + set -> lambda
+  // (letrec (x_i e_i)* (body)) -> (let (x_i nil)* (set! x_i e_i)* body)
+  // List(Symbol(letrec) List(List(Symbol(name) SExp(defintion))) SExp(Body))
+  // ->
+  // List(Symbol(let) List(List(List(Symbol(name) UNDEF)) +
+  // List(List(Keyword(set!) Symbol(name) SExp(defintion)))) SExp(Body))
+  List desugared;
+  SExp defintions = {.node = List()};
+  List undefined_names;
+  List set_names;
+  if (List *args = std::get_if<ast::List>(&list.list.at(1)->node)) {
+    for (auto &arg : args->list) {
+      // for every arg in the arguments, we disassemble into name + def tuples
+      if (List *tuple = std::get_if<ast::List>(&arg->node)) {
+        undefined_names.list.push_back(std::move(tuple->list.at(0)));
+        auto &def = tuple->list.at(1);
+      }
+    }
+  }
 }
 
 List Parser::create_list() {

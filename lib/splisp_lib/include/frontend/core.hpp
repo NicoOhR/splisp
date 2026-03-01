@@ -40,8 +40,13 @@ struct Define {
   std::unique_ptr<Expr> rhs;
 };
 
+struct Set {
+  SymbolId name;
+  std::unique_ptr<Expr> rhs;
+};
+
 struct Expr {
-  std::variant<Apply, Define, Lambda, Const, Cond, Var> node;
+  std::variant<Apply, Define, Lambda, Const, Cond, Var, Set> node;
 };
 
 using Top = std::variant<Define, Expr>;
