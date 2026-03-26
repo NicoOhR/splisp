@@ -21,6 +21,7 @@ enum MachineState {
 
 struct Cell {
   uint64_t value;
+  bool function = 0;
 };
 
 struct CodeEnv {
@@ -54,6 +55,6 @@ private:
   std::map<core::SymbolId, std::unique_ptr<Cell>> global_tbl;
   std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
-  std::stack<uint64_t> data_stack;
-  std::stack<uint64_t> return_stack;
+  std::stack<std::unique_ptr<Cell>> data_stack;
+  std::stack<std::unique_ptr<Cell>> return_stack;
 };

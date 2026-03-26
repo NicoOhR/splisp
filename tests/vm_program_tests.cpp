@@ -1,7 +1,5 @@
 #include <cstdint>
-#include <iostream>
 #include <optional>
-#include <sstream>
 #include <stack>
 #include <vector>
 
@@ -15,28 +13,13 @@ struct StackTestAccess {
     return stack.runInstruction();
   }
 
-  static std::stack<uint64_t> &data(Stack &stack) { return stack.data_stack; }
+  static std::stack<std::unique_ptr<Cell>> &data(Stack &stack) {
+    return stack.data_stack;
+  }
   static size_t &pc(Stack &stack) { return stack.pc; }
 };
 
 constexpr size_t kInstrSize = 9;
-
-std::string stack_to_string(const std::stack<uint64_t> &stack) {
-  std::ostringstream out;
-  auto copy = stack;
-  out << "[";
-  bool first = true;
-  while (!copy.empty()) {
-    if (!first) {
-      out << ", ";
-    }
-    first = false;
-    out << copy.top();
-    copy.pop();
-  }
-  out << "]";
-  return out.str();
-}
 
 TEST(StackProgramTests, ConditionalJump) {
   constexpr size_t kTrue = 8 * kInstrSize;
@@ -61,9 +44,6 @@ TEST(StackProgramTests, ConditionalJump) {
   for (size_t i = 0; i < 100; ++i) {
     const auto prev_pc = StackTestAccess::pc(stack);
     state = StackTestAccess::runInstruction(stack);
-    std::cerr << "step " << i << " pc=" << prev_pc
-              << " stack=" << stack_to_string(StackTestAccess::data(stack))
-              << "\n";
     if (state == MachineState::HALT) {
       break;
     }
@@ -77,7 +57,7 @@ TEST(StackProgramTests, ConditionalJump) {
   EXPECT_EQ(state, MachineState::HALT);
   auto &data_stack = StackTestAccess::data(stack);
   ASSERT_EQ(data_stack.size(), 1U);
-  EXPECT_EQ(data_stack.top(), 1U);
+  EXPECT_EQ(data_stack.top()->value, 1U);
 }
 
 TEST(StackProgramTests, ClosureCapturesRestoreOrderOnCall) {
@@ -113,5 +93,5 @@ TEST(StackProgramTests, ClosureCapturesRestoreOrderOnCall) {
   EXPECT_EQ(state, MachineState::HALT);
   auto &data_stack = StackTestAccess::data(stack);
   ASSERT_EQ(data_stack.size(), 1U);
-  EXPECT_EQ(data_stack.top(), 2U);
+  EXPECT_EQ(data_stack.top()->value, 2U);
 }

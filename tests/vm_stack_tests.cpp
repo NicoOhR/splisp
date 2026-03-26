@@ -13,8 +13,10 @@ struct StackTestAccess {
     return stack.runInstruction();
   }
 
-  static std::stack<uint64_t> &data(Stack &stack) { return stack.data_stack; }
-  static std::stack<uint64_t> &returns(Stack &stack) {
+  static std::stack<std::unique_ptr<Cell>> &data(Stack &stack) {
+    return stack.data_stack;
+  }
+  static std::stack<std::unique_ptr<Cell>> &returns(Stack &stack) {
     return stack.return_stack;
   }
   static size_t &pc(Stack &stack) { return stack.pc; }
@@ -41,24 +43,24 @@ Stack make_stack_with_data(ISA::Operation op, std::optional<uint64_t> operand,
 TEST(StackTests, DispatchArithmeticAdd) {
   auto stack = make_stack(ISA::Operation::ADD);
   auto &data = StackTestAccess::data(stack);
-  data.push(2);
-  data.push(3);
+  data.push(std::make_unique<Cell>(Cell{2}));
+  data.push(std::make_unique<Cell>(Cell{3}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.top(), 5U);
+  EXPECT_EQ(data.top()->value, 5U);
 }
 
 TEST(StackTests, DispatchArithmeticOpsCoarse) {
   auto run_binary = [](ISA::Operation op, uint64_t b, uint64_t a) -> uint64_t {
     auto stack = make_stack(op);
     auto &data = StackTestAccess::data(stack);
-    data.push(b);
-    data.push(a);
+    data.push(std::make_unique<Cell>(Cell{b}));
+    data.push(std::make_unique<Cell>(Cell{a}));
     auto state = StackTestAccess::runInstruction(stack);
     // gtest functionality is not available inside lambdas
-    return data.top();
+    return data.top()->value;
   };
 
   EXPECT_EQ(run_binary(ISA::Operation::ADD, 2, 3), 5U);
@@ -71,13 +73,13 @@ TEST(StackTests, DispatchArithmeticOpsCoarse) {
 TEST(StackTests, DispatchLogicLt) {
   auto stack = make_stack(ISA::Operation::LT);
   auto &data = StackTestAccess::data(stack);
-  data.push(2);
-  data.push(1);
+  data.push(std::make_unique<Cell>(Cell{2}));
+  data.push(std::make_unique<Cell>(Cell{1}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.top(), 1U);
+  EXPECT_EQ(data.top()->value, 1U);
 }
 
 TEST(StackTests, DispatchTransferPush) {
@@ -87,7 +89,7 @@ TEST(StackTests, DispatchTransferPush) {
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.top(), 42U);
+  EXPECT_EQ(data.top()->value, 42U);
 }
 
 TEST(StackTests, DispatchControlHalt) {
@@ -100,7 +102,7 @@ TEST(StackTests, DispatchControlHalt) {
 TEST(StackTests, DispatchControlWait) {
   auto stack = make_stack(ISA::Operation::WAIT);
   auto &data = StackTestAccess::data(stack);
-  data.push(5);
+  data.push(std::make_unique<Cell>(Cell{5}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -110,7 +112,7 @@ TEST(StackTests, DispatchControlWait) {
 TEST(StackTests, DispatchControlJmp) {
   auto stack = make_stack(ISA::Operation::JMP);
   auto &data = StackTestAccess::data(stack);
-  data.push(7);
+  data.push(std::make_unique<Cell>(Cell{7}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -121,8 +123,8 @@ TEST(StackTests, DispatchControlJmp) {
 TEST(StackTests, DispatchControlCjmpTaken) {
   auto stack = make_stack(ISA::Operation::CJMP);
   auto &data = StackTestAccess::data(stack);
-  data.push(9);
-  data.push(1);
+  data.push(std::make_unique<Cell>(Cell{9}));
+  data.push(std::make_unique<Cell>(Cell{1}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -133,8 +135,8 @@ TEST(StackTests, DispatchControlCjmpTaken) {
 TEST(StackTests, DispatchControlCjmpNotTaken) {
   auto stack = make_stack(ISA::Operation::CJMP);
   auto &data = StackTestAccess::data(stack);
-  data.push(9);
-  data.push(0);
+  data.push(std::make_unique<Cell>(Cell{9}));
+  data.push(std::make_unique<Cell>(Cell{0}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -145,7 +147,7 @@ TEST(StackTests, DispatchControlCjmpNotTaken) {
 TEST(StackTests, DispatchControlRet) {
   auto stack = make_stack(ISA::Operation::RET);
   auto &returns = StackTestAccess::returns(stack);
-  returns.push(4);
+  returns.push(std::make_unique<Cell>(Cell{4}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -159,18 +161,18 @@ TEST(StackTests, DispatchTransferRot) {
   const uint64_t a = 1;
   const uint64_t b = 2;
   const uint64_t c = 3;
-  data.push(c);
-  data.push(b);
-  data.push(a);
+  data.push(std::make_unique<Cell>(Cell{c}));
+  data.push(std::make_unique<Cell>(Cell{b}));
+  data.push(std::make_unique<Cell>(Cell{a}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 3U);
-  EXPECT_EQ(data.top(), b);
+  EXPECT_EQ(data.top()->value, b);
   data.pop();
-  EXPECT_EQ(data.top(), c);
+  EXPECT_EQ(data.top()->value, c);
   data.pop();
-  EXPECT_EQ(data.top(), a);
+  EXPECT_EQ(data.top()->value, a);
 }
 
 TEST(StackTests, DispatchTransferTuck) {
@@ -179,30 +181,30 @@ TEST(StackTests, DispatchTransferTuck) {
   const uint64_t a = 20;
   const uint64_t b = 10;
   const uint64_t c = 7;
-  data.push(c);
-  data.push(b);
-  data.push(a);
+  data.push(std::make_unique<Cell>(Cell{c}));
+  data.push(std::make_unique<Cell>(Cell{b}));
+  data.push(std::make_unique<Cell>(Cell{a}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 3U);
-  EXPECT_EQ(data.top(), c);
+  EXPECT_EQ(data.top()->value, c);
   data.pop();
-  EXPECT_EQ(data.top(), a);
+  EXPECT_EQ(data.top()->value, a);
   data.pop();
-  EXPECT_EQ(data.top(), b);
+  EXPECT_EQ(data.top()->value, b);
 }
 
 TEST(StackTests, DispatchTransferFetch) {
   std::vector<uint8_t> mem{0x11, 0x22, 0x33};
   auto stack = make_stack_with_data(ISA::Operation::FETCH, std::nullopt, mem);
   auto &data = StackTestAccess::data(stack);
-  data.push(9);
+  data.push(std::make_unique<Cell>(Cell{9}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.top(), 0x2211U);
+  EXPECT_EQ(data.top()->value, 0x2211U);
 }
 
 TEST(StackTests, DispatchControlMkClosureCallRestoresCapturedOrder) {
@@ -214,23 +216,23 @@ TEST(StackTests, DispatchControlMkClosureCallRestoresCapturedOrder) {
   Stack stack(std::move(program), std::move(data_bytes));
 
   auto &data = StackTestAccess::data(stack);
-  data.push(4);
-  data.push(6);
-  data.push(2);
+  data.push(std::make_unique<Cell>(Cell{4}));
+  data.push(std::make_unique<Cell>(Cell{6}));
+  data.push(std::make_unique<Cell>(Cell{2}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.top(), 0U);
+  EXPECT_EQ(data.top()->value, 0U);
 
   StackTestAccess::pc(stack) += kInstrSize;
   state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
   EXPECT_EQ(StackTestAccess::pc(stack), 123U);
   ASSERT_EQ(data.size(), 2U);
-  EXPECT_EQ(data.top(), 6U);
+  EXPECT_EQ(data.top()->value, 6U);
   data.pop();
-  EXPECT_EQ(data.top(), 4U);
+  EXPECT_EQ(data.top()->value, 4U);
 }
 
 } // namespace
