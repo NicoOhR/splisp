@@ -45,6 +45,7 @@ enum class Operation : uint8_t {
   MKCLOSURE,
   MKGLOBAL,
   LOADGLOBAL,
+  MUTGLOBAL
 };
 
 enum class OperandKind { NONE, U64, ADD };
@@ -66,45 +67,45 @@ struct Spec {
 };
 
 constexpr std::size_t op_count =
-    static_cast<std::size_t>(Operation::LOADGLOBAL) + 1;
-inline constexpr std::array<Spec, op_count> spec_list{{
-    {"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
-    {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
-    {"mul", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
-    {"div", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
-    {"mod", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
-    {"inc", OperandKind::NONE, OperationKind::ARITHMETIC, 1, 1},
-    {"dec", OperandKind::NONE, OperationKind::ARITHMETIC, 1, 1},
-    {"max", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
-    {"min", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
-    {"lt", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
-    {"le", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
-    {"eq", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
-    {"ge", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
-    {"gt", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
-    {"drop", OperandKind::NONE, OperationKind::TRANSFER, 1, 0},
-    {"dup", OperandKind::NONE, OperationKind::TRANSFER, 1, 2},
-    // NDUP/NROT/NTUCK have variable stack effects based on the operand.
-    {"ndup", OperandKind::U64, OperationKind::TRANSFER, 0, 0},
-    {"swap", OperandKind::NONE, OperationKind::TRANSFER, 2, 2},
-    {"rot", OperandKind::NONE, OperationKind::TRANSFER, 3, 3},
-    {"nrot", OperandKind::U64, OperationKind::TRANSFER, 0, 0},
-    {"tuck", OperandKind::NONE, OperationKind::TRANSFER, 2, 3},
-    {"ntuck", OperandKind::U64, OperationKind::TRANSFER, 0, 0},
-    {"size", OperandKind::NONE, OperationKind::TRANSFER, 0, 1},
-    {"nrnd", OperandKind::U64, OperationKind::TRANSFER, 0, 1},
-    {"push", OperandKind::U64, OperationKind::TRANSFER, 0, 1},
-    {"fetch", OperandKind::ADD, OperationKind::TRANSFER, 0, 1},
-    {"call", OperandKind::ADD, OperationKind::CONTROL, 0, 0},
-    {"ret", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
-    {"jmp", OperandKind::ADD, OperationKind::CONTROL, 0, 0},
-    {"cjmp", OperandKind::ADD, OperationKind::CONTROL, 1, 0},
-    {"wait", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
-    {"halt", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
-    {"mkclosure", OperandKind::U64, OperationKind::CONTROL, 0, 0},
-    {"mkglobal", OperandKind::U64, OperationKind::CONTROL, 1, 0}, 
-    {"loadglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0}
-}};
+    static_cast<std::size_t>(Operation::MUTGLOBAL) + 1;
+inline constexpr std::array<Spec, op_count> spec_list{
+    {{"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
+     {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
+     {"mul", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
+     {"div", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
+     {"mod", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
+     {"inc", OperandKind::NONE, OperationKind::ARITHMETIC, 1, 1},
+     {"dec", OperandKind::NONE, OperationKind::ARITHMETIC, 1, 1},
+     {"max", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
+     {"min", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
+     {"lt", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
+     {"le", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
+     {"eq", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
+     {"ge", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
+     {"gt", OperandKind::NONE, OperationKind::LOGIC, 2, 1},
+     {"drop", OperandKind::NONE, OperationKind::TRANSFER, 1, 0},
+     {"dup", OperandKind::NONE, OperationKind::TRANSFER, 1, 2},
+     // NDUP/NROT/NTUCK have variable stack effects based on the operand.
+     {"ndup", OperandKind::U64, OperationKind::TRANSFER, 0, 0},
+     {"swap", OperandKind::NONE, OperationKind::TRANSFER, 2, 2},
+     {"rot", OperandKind::NONE, OperationKind::TRANSFER, 3, 3},
+     {"nrot", OperandKind::U64, OperationKind::TRANSFER, 0, 0},
+     {"tuck", OperandKind::NONE, OperationKind::TRANSFER, 2, 3},
+     {"ntuck", OperandKind::U64, OperationKind::TRANSFER, 0, 0},
+     {"size", OperandKind::NONE, OperationKind::TRANSFER, 0, 1},
+     {"nrnd", OperandKind::U64, OperationKind::TRANSFER, 0, 1},
+     {"push", OperandKind::U64, OperationKind::TRANSFER, 0, 1},
+     {"fetch", OperandKind::ADD, OperationKind::TRANSFER, 0, 1},
+     {"call", OperandKind::ADD, OperationKind::CONTROL, 0, 0},
+     {"ret", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
+     {"jmp", OperandKind::ADD, OperationKind::CONTROL, 0, 0},
+     {"cjmp", OperandKind::ADD, OperationKind::CONTROL, 1, 0},
+     {"wait", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
+     {"halt", OperandKind::NONE, OperationKind::CONTROL, 0, 0},
+     {"mkclosure", OperandKind::U64, OperationKind::CONTROL, 0, 0},
+     {"mkglobal", OperandKind::U64, OperationKind::CONTROL, 1, 0},
+     {"loadglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0},
+     {"mutglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0}}};
 
 struct Instruction {
   Operation op;                    // already a byte

@@ -320,6 +320,9 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
 MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::CALL): {
+    // Closure handles are heap indexes. Calling one restores captured values so
+    // the callee sees the same left-to-right stack order they had before
+    // MKCLOSURE consumed them.
     this->return_stack.push(make_cell(this->pc, true));
     auto heap_idx = this->data_stack.top()->value;
     data_stack.pop();
@@ -363,6 +366,12 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     return setState(MachineState::HALT);
   }
   case (ISA::Operation::MKCLOSURE): {
+    // Stack contract:
+    //   ... captured_1 captured_2 ... captured_n n
+    // becomes
+    //   ... closure_handle
+    // where captured_n is at the top before n is popped. Captures are moved
+    // into the heap env and later restored by CALL in the original order.
     CodeEnv ret;
     const uint64_t operand = read_operand(this->program_mem, this->pc);
     auto n = std::move(this->data_stack.top());
@@ -387,12 +396,19 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     break;
   }
   case (ISA::Operation::LOADGLOBAL): {
-    // essentially a non-closure call, read the symbol label
-    // push the current pc to the return stack
-    // set the program counter to the read value
+    //  1. read from the operand the global we'd like to retrieve
+    //  2. read from global table and copy it to the stack
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    this->return_stack.push(make_cell(this->pc, true));
-    this->pc = this->global_tbl[operand]->value;
+    this->data_stack.push(make_cell(this->global_tbl[operand]->value,
+                                    this->global_tbl[operand]->function));
+    break;
+  }
+  case (ISA::Operation::MUTGLOBAL): {
+    // Pop a value and store it under the symbol-id operand.
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    auto value = std::move(this->data_stack.top());
+    this->data_stack.pop();
+    this->global_tbl[operand] = std::move(value);
     break;
   }
   default:
