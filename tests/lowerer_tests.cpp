@@ -45,6 +45,10 @@ const core::Var *as_var(const core::Expr &expr) {
   return std::get_if<core::Var>(&expr.node);
 }
 
+const core::Undef *as_undef(const core::Expr &expr) {
+  return std::get_if<core::Undef>(&expr.node);
+}
+
 TEST(LowererTests, IfLowersToCondWithConsts) {
   ast::AST ast;
   std::vector<std::unique_ptr<ast::SExp>> items;
@@ -137,6 +141,20 @@ TEST(LowererTests, DefineLowersToLambdaWithBodies) {
   const auto *tail_const = as_const(*lambda->body[1]);
   ASSERT_NE(tail_const, nullptr);
   EXPECT_EQ(tail_const->value, 42U);
+}
+
+TEST(LowererTests, UndefLowersToCoreUndef) {
+  ast::AST ast;
+  ast.push_back(
+      std::make_unique<ast::SExp>(ast::SExp{.node = ast::Symbol{ast::Undef{}}}));
+
+  core::Lowerer lowerer;
+  const core::Program &program = lowerer.lower(ast);
+
+  ASSERT_EQ(program.size(), 1U);
+  const auto *expr = std::get_if<core::Expr>(&program[0]);
+  ASSERT_NE(expr, nullptr);
+  EXPECT_NE(as_undef(*expr), nullptr);
 }
 
 } // namespace

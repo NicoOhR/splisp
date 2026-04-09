@@ -416,4 +416,88 @@ TEST(ParserTests, LetDesugarsToFunctionCall) {
   ast::print_ast(ast);
 }
 
+TEST(ParserTests, LetrecDesugarsToLetThenLambdaApplication) {
+  Parser parser(Lexer("(letrec ((x 1) (y 2)) (+ x y))"));
+  ast::AST ast = parser.parse();
+
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+
+  const auto *list = as_list(*ast[0]);
+  ASSERT_NE(list, nullptr);
+  ASSERT_EQ(list->list.size(), 2U);
+
+  const auto *fn_item = list_item(*list, 0);
+  ASSERT_NE(fn_item, nullptr);
+  const auto *lambda_list = as_list(*fn_item);
+  ASSERT_NE(lambda_list, nullptr);
+  ASSERT_EQ(lambda_list->list.size(), 5U);
+
+  const auto *lambda_kw_item = list_item(*lambda_list, 0);
+  ASSERT_NE(lambda_kw_item, nullptr);
+  const auto *lambda_kw = as_keyword(*lambda_kw_item);
+  ASSERT_NE(lambda_kw, nullptr);
+  EXPECT_EQ(*lambda_kw, ast::Keyword::lambda);
+
+  const auto *args_item = list_item(*lambda_list, 1);
+  ASSERT_NE(args_item, nullptr);
+  const auto *args_list = as_list(*args_item);
+  ASSERT_NE(args_list, nullptr);
+  ASSERT_EQ(args_list->list.size(), 2U);
+
+  const auto *arg0 = list_item(*args_list, 0);
+  ASSERT_NE(arg0, nullptr);
+  const auto *arg0_sym = as_symbol(*arg0);
+  ASSERT_NE(arg0_sym, nullptr);
+  const auto *arg0_name = std::get_if<std::string>(&arg0_sym->value);
+  ASSERT_NE(arg0_name, nullptr);
+  EXPECT_EQ(*arg0_name, "x");
+
+  const auto *arg1 = list_item(*args_list, 1);
+  ASSERT_NE(arg1, nullptr);
+  const auto *arg1_sym = as_symbol(*arg1);
+  ASSERT_NE(arg1_sym, nullptr);
+  const auto *arg1_name = std::get_if<std::string>(&arg1_sym->value);
+  ASSERT_NE(arg1_name, nullptr);
+  EXPECT_EQ(*arg1_name, "y");
+
+  const auto *set0_item = list_item(*lambda_list, 2);
+  ASSERT_NE(set0_item, nullptr);
+  const auto *set0_list = as_list(*set0_item);
+  ASSERT_NE(set0_list, nullptr);
+  ASSERT_EQ(set0_list->list.size(), 3U);
+  const auto *set0_kw = as_keyword(*list_item(*set0_list, 0));
+  ASSERT_NE(set0_kw, nullptr);
+  EXPECT_EQ(*set0_kw, ast::Keyword::set);
+
+  const auto *set1_item = list_item(*lambda_list, 3);
+  ASSERT_NE(set1_item, nullptr);
+  const auto *set1_list = as_list(*set1_item);
+  ASSERT_NE(set1_list, nullptr);
+  ASSERT_EQ(set1_list->list.size(), 3U);
+  const auto *set1_kw = as_keyword(*list_item(*set1_list, 0));
+  ASSERT_NE(set1_kw, nullptr);
+  EXPECT_EQ(*set1_kw, ast::Keyword::set);
+
+  const auto *body_item = list_item(*lambda_list, 4);
+  ASSERT_NE(body_item, nullptr);
+  const auto *body_list = as_list(*body_item);
+  ASSERT_NE(body_list, nullptr);
+  ASSERT_EQ(body_list->list.size(), 3U);
+
+  const auto *values_item = list_item(*list, 1);
+  ASSERT_NE(values_item, nullptr);
+  const auto *values_list = as_list(*values_item);
+  ASSERT_NE(values_list, nullptr);
+  ASSERT_EQ(values_list->list.size(), 2U);
+
+  const auto *undef0 = as_symbol(*list_item(*values_list, 0));
+  ASSERT_NE(undef0, nullptr);
+  EXPECT_NE(std::get_if<ast::Undef>(&undef0->value), nullptr);
+
+  const auto *undef1 = as_symbol(*list_item(*values_list, 1));
+  ASSERT_NE(undef1, nullptr);
+  EXPECT_NE(std::get_if<ast::Undef>(&undef1->value), nullptr);
+}
+
 } // namespace

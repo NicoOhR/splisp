@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
+#include <vector>
 
 Parser::Parser(Lexer lex) : lex(std::move(lex)) {}
 
@@ -257,7 +258,9 @@ SExp Parser::create_let(List &list) {
   lambda_list.list.push_back(
       std::make_unique<SExp>(SExp{.node = Symbol{Keyword::lambda}}));
   lambda_list.list.push_back(std::make_unique<SExp>(std::move(vars)));
-  lambda_list.list.push_back(std::move(list.list.at(2)));
+  for (size_t i = 2; i < list.list.size(); i++) {
+    lambda_list.list.push_back(std::move(list.list.at(i)));
+  }
   desugared.list.push_back(
       std::make_unique<SExp>(SExp{.node = std::move(lambda_list)}));
   desugared.list.push_back(std::make_unique<SExp>(std::move(values)));
@@ -272,18 +275,52 @@ SExp Parser::create_letrec(List &list) {
   // List(Symbol(let) List(List(List(Symbol(name) UNDEF)) +
   // List(List(Keyword(set!) Symbol(name) SExp(defintion)))) SExp(Body))
   List desugared;
-  SExp defintions = {.node = List()};
-  List undefined_names;
-  List set_names;
+  std::vector<std::unique_ptr<ast::SExp>> definitions_list; // SExp(definition)
+  std::vector<ast::Symbol> names; // List(Symbol(name))
+  List undefined_names;           // List(List(Symbol(name) Symbol(UNDEF)))
+  List set_names; // List(Keyword(set!) Symbol(name) SExp(Defintion))
+
+  // extract from the original list the names and definitions of each argument
   if (List *args = std::get_if<ast::List>(&list.list.at(1)->node)) {
     for (auto &arg : args->list) {
       // for every arg in the arguments, we disassemble into name + def tuples
       if (List *tuple = std::get_if<ast::List>(&arg->node)) {
-        undefined_names.list.push_back(std::move(tuple->list.at(0)));
-        auto &def = tuple->list.at(1);
+        if (auto *sym = std::get_if<ast::Symbol>(&tuple->list.at(0)->node)) {
+          names.push_back(*sym);
+        }
+        definitions_list.push_back(std::move(tuple->list.at(1)));
       }
     }
   }
+
+  // build the undefined names List
+  for (const auto &name : names) {
+    List entry;
+    entry.list.push_back(make_sexp(name));
+    entry.list.push_back(make_sexp(Symbol{Undef{}}));
+    undefined_names.list.push_back(make_sexp(std::move(entry)));
+  }
+
+  // build the defined names list
+  for (size_t i = 0; i < definitions_list.size(); i++) {
+    List entry;
+    entry.list.push_back(make_sexp(Symbol{Keyword::set}));
+    entry.list.push_back(make_sexp(names[i]));
+    entry.list.push_back(std::move(definitions_list[i]));
+    set_names.list.push_back(make_sexp(std::move(entry)));
+  }
+
+  // concatenate the the desugared list
+  desugared.list.push_back(make_sexp(Symbol{Keyword::let}));
+  desugared.list.push_back(make_sexp(std::move(undefined_names)));
+  for (auto &set_name : set_names.list) {
+    desugared.list.push_back(std::move(set_name));
+  }
+  for (size_t i = 2; i < list.list.size(); i++) {
+    desugared.list.push_back(std::move(list.list.at(i)));
+  }
+
+  return create_let(desugared);
 }
 
 List Parser::create_list() {
