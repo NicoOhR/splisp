@@ -392,7 +392,10 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // add to the map the current PC code generator should then emit + 1
     // the rhs of the global + RET
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    this->global_tbl[operand] = make_cell(this->pc + 1, true);
+    auto glob_value = std::move(this->data_stack.top());
+    this->data_stack.pop();
+    this->global_tbl[operand] =
+        make_cell(glob_value->value, glob_value->function);
     break;
   }
   case (ISA::Operation::LOADGLOBAL): {
