@@ -28,6 +28,8 @@ void print_symbol(const Symbol &sym, int level) {
           std::cout << stuff << "Int " << v;
         } else if constexpr (std::is_same_v<T, bool>) {
           std::cout << stuff << "Bool " << (v ? "true" : "false");
+        } else if constexpr (std::is_same_v<T, Undef>) {
+          std::cout << stuff << "Undef";
         } else if constexpr (std::is_same_v<T, Keyword>) {
           std::cout << stuff << "Kword " << print_keyword(v);
         }

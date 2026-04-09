@@ -30,6 +30,9 @@ core::Top core::Lowerer::lower_top(const ast::SExp &sexp) {
     }
     return lower_expr(sexp);
   }
+  if (std::get_if<ast::Symbol>(&sexp.node)) {
+    return lower_expr(sexp);
+  }
   throw std::invalid_argument("unhandled SExp in lower_top");
 }
 
@@ -83,6 +86,8 @@ core::Expr core::Lowerer::lower_expr(const ast::SExp &sexp) {
     if (std::get_if<bool>(&sym->value) ||
         std::get_if<std::uint64_t>(&sym->value)) {
       ret.node = lower_const(sexp);
+    } else if (std::get_if<ast::Undef>(&sym->value)) {
+      ret.node = lower_undef(sexp);
     } else {
       ret.node = lower_var(sexp);
     }
@@ -138,6 +143,16 @@ core::Const core::Lowerer::lower_const(const ast::SExp &sexp) {
       return val ? Const{1} : Const{0};
     }
   }
+  throw std::invalid_argument("Invalid const parsed");
+}
+
+core::Undef core::Lowerer::lower_undef(const ast::SExp &sexp) {
+  if (const auto sym = std::get_if<ast::Symbol>(&sexp.node)) {
+    if (std::get_if<ast::Undef>(&sym->value)) {
+      return Undef{};
+    }
+  }
+  throw std::invalid_argument("Invalid undef constant parsed");
 }
 
 core::Var core::Lowerer::lower_var(const ast::SExp &sexp) {
@@ -365,6 +380,12 @@ void print_set(const Set &set, int level) {
   }
 }
 
+void print_undef(const Undef &, int level) {
+  std::cout << std::endl;
+  print_indent(level);
+  std::cout << "Undef";
+}
+
 void print_expr(const Expr &expr, int level) {
   std::visit(
       [level](const auto &node) {
@@ -383,6 +404,8 @@ void print_expr(const Expr &expr, int level) {
           print_define(node, level);
         } else if constexpr (std::is_same_v<T, Set>) {
           print_set(node, level);
+        } else if constexpr (std::is_same_v<T, Undef>) {
+          print_undef(node, level);
         }
       },
       expr.node);

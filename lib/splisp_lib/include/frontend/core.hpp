@@ -14,6 +14,8 @@ struct Const {
   uint64_t value;
 };
 
+struct Undef {};
+
 struct Var {
   SymbolId id;
 };
@@ -46,7 +48,7 @@ struct Set {
 };
 
 struct Expr {
-  std::variant<Apply, Define, Lambda, Const, Cond, Var, Set> node;
+  std::variant<Apply, Define, Lambda, Const, Cond, Var, Set, Undef> node;
 };
 
 using Top = std::variant<Define, Expr>;
@@ -60,6 +62,7 @@ void print_lambda(const Lambda &lambda, int level);
 void print_cond(const Cond &cond, int level);
 void print_define(const Define &defn, int level);
 void print_set(const Set &set, int level);
+void print_undef(const Undef &undef, int level);
 void print_expr(const Expr &expr, int level);
 void print_top(const Top &top, int level);
 void print_program(const Program &program);
@@ -73,6 +76,7 @@ private:
   Expr lower_expr(const ast::SExp &sexp);
   Define lower_definition(const ast::SExp &sexp);
   Const lower_const(const ast::SExp &sexp);
+  Undef lower_undef(const ast::SExp &sexp);
   Var lower_var(const ast::SExp &sexp);
   Apply lower_apply(const ast::SExp &sexp);
   Lambda lower_lambda(const ast::SExp &sexp);

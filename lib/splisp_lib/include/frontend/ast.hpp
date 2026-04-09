@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -17,8 +18,11 @@ struct SymbolID {
   uint64_t id;
 };
 
+struct Undef {};
+
 struct Symbol {
-  std::variant<Keyword, std::string, SymbolID, std::uint64_t, bool> value;
+  std::variant<Keyword, std::string, SymbolID, std::uint64_t, bool, Undef>
+      value;
 };
 
 struct List {
@@ -32,6 +36,10 @@ struct SExp {
 };
 
 using AST = std::vector<std::unique_ptr<SExp>>;
+
+template <typename T> std::unique_ptr<SExp> make_sexp(T node) {
+  return std::make_unique<SExp>(SExp{.node = std::move(node)});
+}
 
 std::optional<std::string> to_string(const SExp &sexp);
 void print_ast(const AST &ast);
