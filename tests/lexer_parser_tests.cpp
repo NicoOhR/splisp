@@ -349,7 +349,7 @@ TEST(ParserTests, LetDesugarsToFunctionCall) {
 
   const auto *list = as_list(*ast[0]);
   ASSERT_NE(list, nullptr);
-  ASSERT_EQ(list->list.size(), 2U);
+  ASSERT_EQ(list->list.size(), 3U);
 
   const auto *fn_item = list_item(*list, 0);
   ASSERT_NE(fn_item, nullptr);
@@ -391,13 +391,7 @@ TEST(ParserTests, LetDesugarsToFunctionCall) {
   ASSERT_NE(body_list, nullptr);
   ASSERT_EQ(body_list->list.size(), 3U);
 
-  const auto *values_item = list_item(*list, 1);
-  ASSERT_NE(values_item, nullptr);
-  const auto *values_list = as_list(*values_item);
-  ASSERT_NE(values_list, nullptr);
-  ASSERT_EQ(values_list->list.size(), 2U);
-
-  const auto *val0 = list_item(*values_list, 0);
+  const auto *val0 = list_item(*list, 1);
   ASSERT_NE(val0, nullptr);
   const auto *val0_sym = as_symbol(*val0);
   ASSERT_NE(val0_sym, nullptr);
@@ -405,7 +399,7 @@ TEST(ParserTests, LetDesugarsToFunctionCall) {
   ASSERT_NE(val0_num, nullptr);
   EXPECT_EQ(*val0_num, 1U);
 
-  const auto *val1 = list_item(*values_list, 1);
+  const auto *val1 = list_item(*list, 2);
   ASSERT_NE(val1, nullptr);
   const auto *val1_sym = as_symbol(*val1);
   ASSERT_NE(val1_sym, nullptr);
@@ -425,7 +419,7 @@ TEST(ParserTests, LetrecDesugarsToLetThenLambdaApplication) {
 
   const auto *list = as_list(*ast[0]);
   ASSERT_NE(list, nullptr);
-  ASSERT_EQ(list->list.size(), 2U);
+  ASSERT_EQ(list->list.size(), 3U);
 
   const auto *fn_item = list_item(*list, 0);
   ASSERT_NE(fn_item, nullptr);
@@ -485,19 +479,65 @@ TEST(ParserTests, LetrecDesugarsToLetThenLambdaApplication) {
   ASSERT_NE(body_list, nullptr);
   ASSERT_EQ(body_list->list.size(), 3U);
 
-  const auto *values_item = list_item(*list, 1);
-  ASSERT_NE(values_item, nullptr);
-  const auto *values_list = as_list(*values_item);
-  ASSERT_NE(values_list, nullptr);
-  ASSERT_EQ(values_list->list.size(), 2U);
-
-  const auto *undef0 = as_symbol(*list_item(*values_list, 0));
+  const auto *undef0 = as_symbol(*list_item(*list, 1));
   ASSERT_NE(undef0, nullptr);
   EXPECT_NE(std::get_if<ast::Undef>(&undef0->value), nullptr);
 
-  const auto *undef1 = as_symbol(*list_item(*values_list, 1));
+  const auto *undef1 = as_symbol(*list_item(*list, 2));
   ASSERT_NE(undef1, nullptr);
   EXPECT_NE(std::get_if<ast::Undef>(&undef1->value), nullptr);
+}
+
+TEST(ParserTests, LetrecPreservesNonSymbolBindingRhs) {
+  Parser parser(Lexer("(letrec ((f (lambda (x) (+ x 1)))) f)"));
+  ast::AST ast = parser.parse();
+
+  ASSERT_EQ(ast.size(), 1U);
+  ASSERT_NE(ast[0], nullptr);
+
+  const auto *list = as_list(*ast[0]);
+  ASSERT_NE(list, nullptr);
+  ASSERT_EQ(list->list.size(), 2U);
+
+  const auto *fn_item = list_item(*list, 0);
+  ASSERT_NE(fn_item, nullptr);
+  const auto *outer_lambda = as_list(*fn_item);
+  ASSERT_NE(outer_lambda, nullptr);
+  ASSERT_EQ(outer_lambda->list.size(), 4U);
+
+  const auto *set_item = list_item(*outer_lambda, 2);
+  ASSERT_NE(set_item, nullptr);
+  const auto *set_list = as_list(*set_item);
+  ASSERT_NE(set_list, nullptr);
+  ASSERT_EQ(set_list->list.size(), 3U);
+
+  const auto *set_kw = as_keyword(*list_item(*set_list, 0));
+  ASSERT_NE(set_kw, nullptr);
+  EXPECT_EQ(*set_kw, ast::Keyword::set);
+
+  const auto *lambda_item = list_item(*set_list, 2);
+  ASSERT_NE(lambda_item, nullptr);
+  const auto *lambda_list = as_list(*lambda_item);
+  ASSERT_NE(lambda_list, nullptr);
+  ASSERT_EQ(lambda_list->list.size(), 3U);
+
+  const auto *lambda_kw = as_keyword(*list_item(*lambda_list, 0));
+  ASSERT_NE(lambda_kw, nullptr);
+  EXPECT_EQ(*lambda_kw, ast::Keyword::lambda);
+
+  const auto *args_item = list_item(*lambda_list, 1);
+  ASSERT_NE(args_item, nullptr);
+  const auto *args_list = as_list(*args_item);
+  ASSERT_NE(args_list, nullptr);
+  ASSERT_EQ(args_list->list.size(), 1U);
+
+  const auto *arg0 = list_item(*args_list, 0);
+  ASSERT_NE(arg0, nullptr);
+  const auto *arg0_sym = as_symbol(*arg0);
+  ASSERT_NE(arg0_sym, nullptr);
+  const auto *arg0_name = std::get_if<std::string>(&arg0_sym->value);
+  ASSERT_NE(arg0_name, nullptr);
+  EXPECT_EQ(*arg0_name, "x");
 }
 
 } // namespace

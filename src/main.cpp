@@ -6,12 +6,14 @@
 #include <string>
 
 int main() {
-  // std::string program = "(define (add x y) (+ x y) (+ x 1)) (add 2 3) (add 1
-  // "
-  //                       "2) (define x 2) (add x 3)";
-  // std::string program =
-  //     "(letrec ((f (lambda (x) (g x)) (g lambda (x) (+ x 1))))) (f 20)";
-  std::string program = "(let ((x 1)) (set! x (+ x 1)) x)";
+  std::string program = R"(
+    (define x 1)
+    (set! x (+ x 1))
+    (let ((x 10))
+      (set! x (+ x 5))
+      x)
+    x
+  )";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

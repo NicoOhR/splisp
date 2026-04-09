@@ -236,9 +236,8 @@ SExp Parser::create_let(List &list) {
   // result after parsing List(List(lambda List(Args) SExp(body)) List(values))
   List desugared;
   SExp vars = {.node = List()};
-  SExp values = {.node = List()};
   auto &vars_list = std::get<ast::List>(vars.node);
-  auto &values_list = std::get<ast::List>(values.node);
+  std::vector<std::unique_ptr<ast::SExp>> values_list;
 
   // construction of the vars and values list
   if (List *args = std::get_if<ast::List>(&list.list.at(1)->node)) {
@@ -247,9 +246,7 @@ SExp Parser::create_let(List &list) {
         if (std::get_if<ast::Symbol>(&pair->list.at(0)->node)) {
           vars_list.list.push_back(std::move(pair->list.at(0)));
         }
-        if (std::get_if<ast::Symbol>(&pair->list.at(1)->node)) {
-          values_list.list.push_back(std::move(pair->list.at(1)));
-        }
+        values_list.push_back(std::move(pair->list.at(1)));
       }
     }
   }
@@ -263,7 +260,9 @@ SExp Parser::create_let(List &list) {
   }
   desugared.list.push_back(
       std::make_unique<SExp>(SExp{.node = std::move(lambda_list)}));
-  desugared.list.push_back(std::make_unique<SExp>(std::move(values)));
+  for (auto &value : values_list) {
+    desugared.list.push_back(std::move(value));
+  }
   return SExp{.node = std::move(desugared)};
 }
 

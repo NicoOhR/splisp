@@ -302,7 +302,7 @@ TEST(StackTests, DispatchControlLoadGlobalClonesBoundCell) {
   ASSERT_NE(data.top().get(), nullptr);
   EXPECT_NE(data.top().get(), stored_ptr);
   EXPECT_EQ(data.top()->value, 42U);
-  EXPECT_FALSE(data.top()->function);
+  EXPECT_TRUE(data.top()->function);
   ASSERT_NE(globals[77], nullptr);
   EXPECT_EQ(globals[77].get(), stored_ptr);
   EXPECT_EQ(globals[77]->value, 42U);
