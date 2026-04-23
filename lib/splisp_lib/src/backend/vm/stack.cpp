@@ -81,71 +81,71 @@ MachineState Stack::runInstruction() {
 MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::ADD): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{a->value + b->value}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{a->value + b->value}));
     break;
   }
   case (ISA::Operation::SUB): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{a->value - b->value}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{a->value - b->value}));
     break;
   }
   case (ISA::Operation::MUL): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{a->value * b->value}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{a->value * b->value}));
     break;
   }
   case (ISA::Operation::DIV): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{a->value / b->value}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{a->value / b->value}));
     break;
   }
   case (ISA::Operation::MOD): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{a->value % b->value}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{a->value % b->value}));
     break;
   }
   case (ISA::Operation::INC): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{a->value + 1}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{a->value + 1}));
     break;
   }
   case (ISA::Operation::DEC): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{a->value - 1}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{a->value - 1}));
     break;
   }
   case (ISA::Operation::MAX): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{std::max(a->value, b->value)}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{std::max(a->value, b->value)}));
     break;
   }
   case (ISA::Operation::MIN): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(Cell{std::min(a->value, b->value)}));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(Cell{std::min(a->value, b->value)}));
     break;
   }
   default:
@@ -157,47 +157,47 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
 MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::LT): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value < b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::LE): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value <= b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::EQ): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value == b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::GE): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value >= b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::GT): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::make_shared<Cell>(
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value > b->value ? 1 : 0)}));
     break;
   }
@@ -211,38 +211,38 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   const uint64_t operand = read_operand(this->program_mem, this->pc);
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::DROP): {
-    data_stack.pop();
+    data_stack.pop_back();
     break;
   }
   case (ISA::Operation::DUP): {
-    data_stack.push(clone_cell(*data_stack.top()));
+    data_stack.push_back(clone_cell(*data_stack.back()));
     break;
   }
   case (ISA::Operation::NDUP): {
     for (auto i = 1; i < operand; i++) {
-      data_stack.push(clone_cell(*data_stack.top()));
+      data_stack.push_back(clone_cell(*data_stack.back()));
     }
     break;
   }
   case (ISA::Operation::SWAP): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::move(a));
-    data_stack.push(std::move(b));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::move(a));
+    data_stack.push_back(std::move(b));
     break;
   }
   case (ISA::Operation::ROT): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    auto c = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::move(a));
-    data_stack.push(std::move(c));
-    data_stack.push(std::move(b));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto c = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::move(a));
+    data_stack.push_back(std::move(c));
+    data_stack.push_back(std::move(b));
     break;
   }
   case (ISA::Operation::NROT): {
@@ -250,50 +250,50 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     auto tmp = std::list<std::shared_ptr<Cell>>();
     // append from stack in decending order
     for (auto i = 0; i < operand; i++) {
-      tmp.push_front(std::move(data_stack.top()));
-      data_stack.pop();
+      tmp.push_front(std::move(data_stack.back()));
+      data_stack.pop_back();
     }
     // insert the first element (a) into the bottom of the N operations
-    data_stack.push(std::move(tmp.front()));
+    data_stack.push_back(std::move(tmp.front()));
     tmp.pop_front();
     // iterate backwards through the list mainting the rest of the original
     // order
     for (auto i = tmp.size(); i > 0; i--) {
-      data_stack.push(std::move(tmp.back()));
+      data_stack.push_back(std::move(tmp.back()));
       tmp.pop_back();
     }
     break;
   }
   case (ISA::Operation::TUCK): {
-    auto a = std::move(data_stack.top());
-    data_stack.pop();
-    auto b = std::move(data_stack.top());
-    data_stack.pop();
-    auto c = std::move(data_stack.top());
-    data_stack.pop();
-    data_stack.push(std::move(b));
-    data_stack.push(std::move(a));
-    data_stack.push(std::move(c));
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto b = std::move(data_stack.back());
+    data_stack.pop_back();
+    auto c = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.push_back(std::move(b));
+    data_stack.push_back(std::move(a));
+    data_stack.push_back(std::move(c));
     break;
   }
   case (ISA::Operation::NTUCK): {
     auto tmp = std::list<std::shared_ptr<Cell>>();
     // append from stack in decending order
     for (auto i = 0; i < operand; i++) {
-      tmp.push_front(std::move(data_stack.top()));
-      data_stack.pop();
+      tmp.push_front(std::move(data_stack.back()));
+      data_stack.pop_back();
     }
     // iterate backwards through the list mainting the rest of the original
     for (auto i = tmp.back()->value - 1; i > 0; i--) {
-      data_stack.push(std::move(tmp.back()));
+      data_stack.push_back(std::move(tmp.back()));
       tmp.pop_back();
     }
     // insert the last element (n) into the top of the N operations
-    data_stack.push(std::move(tmp.back()));
+    data_stack.push_back(std::move(tmp.back()));
     break;
   }
   case (ISA::Operation::SIZE): {
-    data_stack.push(make_cell(data_stack.size()));
+    data_stack.push_back(make_cell(data_stack.size()));
     break;
   }
   case (ISA::Operation::NRND): {
@@ -301,31 +301,21 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     break;
   }
   case (ISA::Operation::PUSH): {
-    data_stack.push(make_cell(operand));
+    data_stack.push_back(make_cell(operand));
     break;
   }
   case (ISA::Operation::FETCH): {
-    auto add = static_cast<size_t>(data_stack.top()->value);
-    data_stack.pop();
+    auto add = static_cast<size_t>(data_stack.back()->value);
+    data_stack.pop_back();
     // fetch getting back the 16 bits is a little strange, not sure if I should
     // switch the WORD of this VM to be 16 or just change FETCH
     uint16_t val = (this->program_mem[add + 1] << 8 | this->program_mem[add]);
-    data_stack.push(make_cell(val));
+    data_stack.push_back(make_cell(val));
     break;
   }
   case (ISA::Operation::PICK): {
     // PICK n: push a copy of the item at depth n (0 = top).
-    std::vector<std::unique_ptr<Cell>> tmp;
-    tmp.reserve(operand + 1);
-    for (uint64_t i = 0; i <= operand; ++i) {
-      tmp.push_back(std::move(data_stack.top()));
-      data_stack.pop();
-    }
-    auto picked = clone_cell(*tmp.back());
-    for (auto it = tmp.rbegin(); it != tmp.rend(); ++it) {
-      data_stack.push(std::move(*it));
-    }
-    data_stack.push(std::move(picked));
+    data_stack.push_back(clone_cell(*data_stack[data_stack.size() - 1 - operand]));
     break;
   }
   default:
@@ -340,11 +330,11 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // the callee sees the same left-to-right stack order they had before
     // MKCLOSURE consumed them.
     this->return_stack.push(make_cell(this->pc, true));
-    auto heap_idx = this->data_stack.top()->value;
-    data_stack.pop();
+    auto heap_idx = this->data_stack.back()->value;
+    data_stack.pop_back();
     CodeEnv *env = &this->heap[heap_idx];
     for (size_t i = env->captured_vars.size(); i > 0; --i) {
-      this->data_stack.push(clone_cell(*env->captured_vars[i - 1]));
+      this->data_stack.push_back(clone_cell(*env->captured_vars[i - 1]));
     }
     this->pc = env->code_idx;
     break;
@@ -356,8 +346,8 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     break;
   }
   case (ISA::Operation::JMP): {
-    auto dest = std::move(this->data_stack.top());
-    this->data_stack.pop();
+    auto dest = std::move(this->data_stack.back());
+    this->data_stack.pop_back();
     this->pc = dest->value;
     break;
   }
@@ -366,10 +356,10 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // (location)
     // so for if, the location is evaluated first and then the condition, this
     // works roughly as evaluating the AST from the leaves up
-    auto a = std::move(this->data_stack.top());
-    this->data_stack.pop();
-    auto b = std::move(this->data_stack.top());
-    this->data_stack.pop();
+    auto a = std::move(this->data_stack.back());
+    this->data_stack.pop_back();
+    auto b = std::move(this->data_stack.back());
+    this->data_stack.pop_back();
     if (a->value != 0) {
       this->pc = b->value;
     }
@@ -390,16 +380,16 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // into the heap env and later restored by CALL in the original order.
     CodeEnv ret;
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    auto n = std::move(this->data_stack.top());
-    this->data_stack.pop();
+    auto n = std::move(this->data_stack.back());
+    this->data_stack.pop_back();
     for (size_t i = 0; i < n->value; i++) {
-      auto a = std::move(this->data_stack.top());
-      this->data_stack.pop();
+      auto a = std::move(this->data_stack.back());
+      this->data_stack.pop_back();
       ret.captured_vars.push_back(std::move(a));
     }
     ret.code_idx = operand;
     this->heap.push_back(std::move(ret));
-    this->data_stack.push(make_cell(this->heap.size() - 1, true));
+    this->data_stack.push_back(make_cell(this->heap.size() - 1, true));
     break;
   }
   case (ISA::Operation::MKGLOBAL): {
@@ -408,8 +398,8 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // add to the map the current PC code generator should then emit + 1
     // the rhs of the global + RET
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    auto glob_value = std::move(this->data_stack.top());
-    this->data_stack.pop();
+    auto glob_value = std::move(this->data_stack.back());
+    this->data_stack.pop_back();
     this->global_tbl[operand] =
         make_cell(glob_value->value, glob_value->function);
     break;
@@ -418,15 +408,15 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     //  1. read from the operand the global we'd like to retrieve
     //  2. read from global table and copy it to the stack
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    this->data_stack.push(make_cell(this->global_tbl[operand]->value,
+    this->data_stack.push_back(make_cell(this->global_tbl[operand]->value,
                                     this->global_tbl[operand]->function));
     break;
   }
   case (ISA::Operation::MUTGLOBAL): {
     // Pop a value and store it under the symbol-id operand.
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    auto value = std::move(this->data_stack.top());
-    this->data_stack.pop();
+    auto value = std::move(this->data_stack.back());
+    this->data_stack.pop_back();
     this->global_tbl[operand] = std::move(value);
     break;
   }

@@ -13,7 +13,7 @@ struct StackTestAccess {
     return stack.runInstruction();
   }
 
-  static std::stack<std::shared_ptr<Cell>> &data(Stack &stack) {
+  static std::vector<std::shared_ptr<Cell>> &data(Stack &stack) {
     return stack.data_stack;
   }
   static size_t &pc(Stack &stack) { return stack.pc; }
@@ -57,7 +57,7 @@ TEST(StackProgramTests, ConditionalJump) {
   EXPECT_EQ(state, MachineState::HALT);
   auto &data_stack = StackTestAccess::data(stack);
   ASSERT_EQ(data_stack.size(), 1U);
-  EXPECT_EQ(data_stack.top()->value, 1U);
+  EXPECT_EQ(data_stack.back()->value, 1U);
 }
 
 TEST(StackProgramTests, ClosureCapturesRestoreOrderOnCall) {
@@ -93,5 +93,5 @@ TEST(StackProgramTests, ClosureCapturesRestoreOrderOnCall) {
   EXPECT_EQ(state, MachineState::HALT);
   auto &data_stack = StackTestAccess::data(stack);
   ASSERT_EQ(data_stack.size(), 1U);
-  EXPECT_EQ(data_stack.top()->value, 2U);
+  EXPECT_EQ(data_stack.back()->value, 2U);
 }

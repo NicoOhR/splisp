@@ -55,6 +55,6 @@ private:
   std::map<core::SymbolId, std::shared_ptr<Cell>> global_tbl;
   std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
-  std::stack<std::shared_ptr<Cell>> data_stack;
+  std::vector<std::shared_ptr<Cell>> data_stack;
   std::stack<std::shared_ptr<Cell>> return_stack;
 };
