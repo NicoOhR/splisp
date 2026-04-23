@@ -48,6 +48,7 @@ MachineState Stack::run_program() {
   this->machine_state = runInstruction();
   while (this->machine_state == MachineState::OKAY) {
     const auto prev_pc = this->pc;
+    this->machine_state = runInstruction();
     if (this->pc == prev_pc) {
       this->pc += 9;
     }

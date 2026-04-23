@@ -130,11 +130,6 @@ void Scoper::resolve(ast::AST &ast) {
                     return;
                   }
                 }
-                // if (*kw == ast::Keyword::set) {
-                //   //(Kword(Set) Symbol(Name) SExp(rhs)) -> (Kword(Set)
-                //   SymbolID
-                //   // SExp(rhs))
-                // }
               }
             }
             for (size_t i = 0; i < node.list.size(); i++) {

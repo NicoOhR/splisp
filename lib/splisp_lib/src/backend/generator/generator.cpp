@@ -78,9 +78,9 @@ void Generator::emit_const(const core::Const &const_var) {
 };
 void Generator::emit_top_define(const core::Define &def) {
   // function which defines top level (global) defintion
+  Generator::emit_expr(*def.rhs);
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::MKGLOBAL, .operand = def.name});
-  Generator::emit_expr(*def.rhs);
   this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::RET});
 };
 
