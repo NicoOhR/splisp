@@ -45,7 +45,8 @@ enum class Operation : uint8_t {
   MKCLOSURE,
   MKGLOBAL,
   LOADGLOBAL,
-  MUTGLOBAL
+  MUTGLOBAL,
+  PICK
 };
 
 enum class OperandKind { NONE, U64, ADD };
@@ -67,7 +68,7 @@ struct Spec {
 };
 
 constexpr std::size_t op_count =
-    static_cast<std::size_t>(Operation::MUTGLOBAL) + 1;
+    static_cast<std::size_t>(Operation::PICK) + 1;
 inline constexpr std::array<Spec, op_count> spec_list{
     {{"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
      {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
@@ -105,7 +106,8 @@ inline constexpr std::array<Spec, op_count> spec_list{
      {"mkclosure", OperandKind::U64, OperationKind::CONTROL, 0, 0},
      {"mkglobal", OperandKind::U64, OperationKind::CONTROL, 1, 0},
      {"loadglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0},
-     {"mutglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0}}};
+     {"mutglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0},
+     {"pick", OperandKind::U64, OperationKind::TRANSFER, 0, 1}}};
 
 struct Instruction {
   Operation op;                    // already a byte

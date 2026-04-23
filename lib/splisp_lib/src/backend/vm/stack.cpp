@@ -313,6 +313,21 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     data_stack.push(make_cell(val));
     break;
   }
+  case (ISA::Operation::PICK): {
+    // PICK n: push a copy of the item at depth n (0 = top).
+    std::vector<std::unique_ptr<Cell>> tmp;
+    tmp.reserve(operand + 1);
+    for (uint64_t i = 0; i <= operand; ++i) {
+      tmp.push_back(std::move(data_stack.top()));
+      data_stack.pop();
+    }
+    auto picked = clone_cell(*tmp.back());
+    for (auto it = tmp.rbegin(); it != tmp.rend(); ++it) {
+      data_stack.push(std::move(*it));
+    }
+    data_stack.push(std::move(picked));
+    break;
+  }
   default:
     throw std::invalid_argument("non-control operation handed to");
   }
