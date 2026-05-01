@@ -7,12 +7,9 @@
 
 int main() {
   std::string program = R"(
-    (define x 1)
-    (set! x (+ x 1))
-    (let ((x 10))
-      (set! x (+ x 5))
-      x)
-    x
+    (letrec ((even? (lambda (n) (if n (odd? (- n 1)) 1)))
+             (odd?  (lambda (n) (if n (even? (- n 1)) 0))))
+      (even? 4))
   )";
   Lexer lex(program);
   Parser parser(std::move(lex));

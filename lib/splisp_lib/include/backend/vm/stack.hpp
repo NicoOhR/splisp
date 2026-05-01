@@ -53,6 +53,7 @@ private:
   MachineState machine_state = MachineState::OKAY;
 
   std::map<core::SymbolId, std::shared_ptr<Cell>> global_tbl;
+  std::uint8_t frame_base = 0;
   std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
   std::vector<std::shared_ptr<Cell>> data_stack;
