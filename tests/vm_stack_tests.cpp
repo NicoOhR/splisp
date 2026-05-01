@@ -36,12 +36,6 @@ Stack make_stack(ISA::Operation op, std::optional<uint64_t> operand = {}) {
   return Stack(std::move(program), std::move(data));
 }
 
-Stack make_stack_with_data(ISA::Operation op, std::optional<uint64_t> operand,
-                           std::vector<uint8_t> data) {
-  ISA::Instruction instr{op, operand};
-  std::vector<ISA::Instruction> program{instr};
-  return Stack(std::move(program), std::move(data));
-}
 
 TEST(StackTests, DispatchArithmeticAdd) {
   auto stack = make_stack(ISA::Operation::ADD);
@@ -158,57 +152,6 @@ TEST(StackTests, DispatchControlRet) {
   EXPECT_EQ(returns.size(), 0U);
 }
 
-TEST(StackTests, DispatchTransferRot) {
-  auto stack = make_stack(ISA::Operation::ROT);
-  auto &data = StackTestAccess::data(stack);
-  const uint64_t a = 1;
-  const uint64_t b = 2;
-  const uint64_t c = 3;
-  data.push_back(std::make_shared<Cell>(Cell{c}));
-  data.push_back(std::make_shared<Cell>(Cell{b}));
-  data.push_back(std::make_shared<Cell>(Cell{a}));
-
-  auto state = StackTestAccess::runInstruction(stack);
-  EXPECT_EQ(state, MachineState::OKAY);
-  ASSERT_EQ(data.size(), 3U);
-  EXPECT_EQ(data.back()->value, b);
-  data.pop_back();
-  EXPECT_EQ(data.back()->value, c);
-  data.pop_back();
-  EXPECT_EQ(data.back()->value, a);
-}
-
-TEST(StackTests, DispatchTransferTuck) {
-  auto stack = make_stack(ISA::Operation::TUCK);
-  auto &data = StackTestAccess::data(stack);
-  const uint64_t a = 20;
-  const uint64_t b = 10;
-  const uint64_t c = 7;
-  data.push_back(std::make_shared<Cell>(Cell{c}));
-  data.push_back(std::make_shared<Cell>(Cell{b}));
-  data.push_back(std::make_shared<Cell>(Cell{a}));
-
-  auto state = StackTestAccess::runInstruction(stack);
-  EXPECT_EQ(state, MachineState::OKAY);
-  ASSERT_EQ(data.size(), 3U);
-  EXPECT_EQ(data.back()->value, c);
-  data.pop_back();
-  EXPECT_EQ(data.back()->value, a);
-  data.pop_back();
-  EXPECT_EQ(data.back()->value, b);
-}
-
-TEST(StackTests, DispatchTransferFetch) {
-  std::vector<uint8_t> mem{0x11, 0x22, 0x33};
-  auto stack = make_stack_with_data(ISA::Operation::FETCH, std::nullopt, mem);
-  auto &data = StackTestAccess::data(stack);
-  data.push_back(std::make_shared<Cell>(Cell{9}));
-
-  auto state = StackTestAccess::runInstruction(stack);
-  EXPECT_EQ(state, MachineState::OKAY);
-  ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.back()->value, 0x2211U);
-}
 
 TEST(StackTests, DispatchControlMkClosureCallRestoresCapturedOrder) {
   std::vector<ISA::Instruction> program{

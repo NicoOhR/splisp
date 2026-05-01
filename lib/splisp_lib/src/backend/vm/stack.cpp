@@ -218,30 +218,12 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     data_stack.push_back(clone_cell(*data_stack.back()));
     break;
   }
-  case (ISA::Operation::NDUP): {
-    for (auto i = 1; i < operand; i++) {
-      data_stack.push_back(clone_cell(*data_stack.back()));
-    }
-    break;
-  }
   case (ISA::Operation::SWAP): {
     auto a = std::move(data_stack.back());
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
     data_stack.push_back(std::move(a));
-    data_stack.push_back(std::move(b));
-    break;
-  }
-  case (ISA::Operation::ROT): {
-    auto a = std::move(data_stack.back());
-    data_stack.pop_back();
-    auto b = std::move(data_stack.back());
-    data_stack.pop_back();
-    auto c = std::move(data_stack.back());
-    data_stack.pop_back();
-    data_stack.push_back(std::move(a));
-    data_stack.push_back(std::move(c));
     data_stack.push_back(std::move(b));
     break;
   }
@@ -264,53 +246,8 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     }
     break;
   }
-  case (ISA::Operation::TUCK): {
-    auto a = std::move(data_stack.back());
-    data_stack.pop_back();
-    auto b = std::move(data_stack.back());
-    data_stack.pop_back();
-    auto c = std::move(data_stack.back());
-    data_stack.pop_back();
-    data_stack.push_back(std::move(b));
-    data_stack.push_back(std::move(a));
-    data_stack.push_back(std::move(c));
-    break;
-  }
-  case (ISA::Operation::NTUCK): {
-    auto tmp = std::list<std::shared_ptr<Cell>>();
-    // append from stack in decending order
-    for (auto i = 0; i < operand; i++) {
-      tmp.push_front(std::move(data_stack.back()));
-      data_stack.pop_back();
-    }
-    // iterate backwards through the list mainting the rest of the original
-    for (auto i = tmp.back()->value - 1; i > 0; i--) {
-      data_stack.push_back(std::move(tmp.back()));
-      tmp.pop_back();
-    }
-    // insert the last element (n) into the top of the N operations
-    data_stack.push_back(std::move(tmp.back()));
-    break;
-  }
-  case (ISA::Operation::SIZE): {
-    data_stack.push_back(make_cell(data_stack.size()));
-    break;
-  }
-  case (ISA::Operation::NRND): {
-    throw std::invalid_argument("not yet implemented");
-    break;
-  }
   case (ISA::Operation::PUSH): {
     data_stack.push_back(make_cell(operand));
-    break;
-  }
-  case (ISA::Operation::FETCH): {
-    auto add = static_cast<size_t>(data_stack.back()->value);
-    data_stack.pop_back();
-    // fetch getting back the 16 bits is a little strange, not sure if I should
-    // switch the WORD of this VM to be 16 or just change FETCH
-    uint16_t val = (this->program_mem[add + 1] << 8 | this->program_mem[add]);
-    data_stack.push_back(make_cell(val));
     break;
   }
   case (ISA::Operation::PICK): {
