@@ -13,13 +13,13 @@ struct StackTestAccess {
     return stack.runInstruction();
   }
 
-  static std::stack<std::unique_ptr<Cell>> &data(Stack &stack) {
+  static std::stack<std::shared_ptr<Cell>> &data(Stack &stack) {
     return stack.data_stack;
   }
-  static std::stack<std::unique_ptr<Cell>> &returns(Stack &stack) {
+  static std::stack<std::shared_ptr<Cell>> &returns(Stack &stack) {
     return stack.return_stack;
   }
-  static std::map<core::SymbolId, std::unique_ptr<Cell>> &globals(Stack &stack) {
+  static std::map<core::SymbolId, std::shared_ptr<Cell>> &globals(Stack &stack) {
     return stack.global_tbl;
   }
   static size_t &pc(Stack &stack) { return stack.pc; }
@@ -46,8 +46,8 @@ Stack make_stack_with_data(ISA::Operation op, std::optional<uint64_t> operand,
 TEST(StackTests, DispatchArithmeticAdd) {
   auto stack = make_stack(ISA::Operation::ADD);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{2}));
-  data.push(std::make_unique<Cell>(Cell{3}));
+  data.push(std::make_shared<Cell>(Cell{2}));
+  data.push(std::make_shared<Cell>(Cell{3}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -59,8 +59,8 @@ TEST(StackTests, DispatchArithmeticOpsCoarse) {
   auto run_binary = [](ISA::Operation op, uint64_t b, uint64_t a) -> uint64_t {
     auto stack = make_stack(op);
     auto &data = StackTestAccess::data(stack);
-    data.push(std::make_unique<Cell>(Cell{b}));
-    data.push(std::make_unique<Cell>(Cell{a}));
+    data.push(std::make_shared<Cell>(Cell{b}));
+    data.push(std::make_shared<Cell>(Cell{a}));
     auto state = StackTestAccess::runInstruction(stack);
     // gtest functionality is not available inside lambdas
     return data.top()->value;
@@ -76,8 +76,8 @@ TEST(StackTests, DispatchArithmeticOpsCoarse) {
 TEST(StackTests, DispatchLogicLt) {
   auto stack = make_stack(ISA::Operation::LT);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{2}));
-  data.push(std::make_unique<Cell>(Cell{1}));
+  data.push(std::make_shared<Cell>(Cell{2}));
+  data.push(std::make_shared<Cell>(Cell{1}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -105,7 +105,7 @@ TEST(StackTests, DispatchControlHalt) {
 TEST(StackTests, DispatchControlWait) {
   auto stack = make_stack(ISA::Operation::WAIT);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{5}));
+  data.push(std::make_shared<Cell>(Cell{5}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -115,7 +115,7 @@ TEST(StackTests, DispatchControlWait) {
 TEST(StackTests, DispatchControlJmp) {
   auto stack = make_stack(ISA::Operation::JMP);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{7}));
+  data.push(std::make_shared<Cell>(Cell{7}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -126,8 +126,8 @@ TEST(StackTests, DispatchControlJmp) {
 TEST(StackTests, DispatchControlCjmpTaken) {
   auto stack = make_stack(ISA::Operation::CJMP);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{9}));
-  data.push(std::make_unique<Cell>(Cell{1}));
+  data.push(std::make_shared<Cell>(Cell{9}));
+  data.push(std::make_shared<Cell>(Cell{1}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -138,8 +138,8 @@ TEST(StackTests, DispatchControlCjmpTaken) {
 TEST(StackTests, DispatchControlCjmpNotTaken) {
   auto stack = make_stack(ISA::Operation::CJMP);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{9}));
-  data.push(std::make_unique<Cell>(Cell{0}));
+  data.push(std::make_shared<Cell>(Cell{9}));
+  data.push(std::make_shared<Cell>(Cell{0}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -150,7 +150,7 @@ TEST(StackTests, DispatchControlCjmpNotTaken) {
 TEST(StackTests, DispatchControlRet) {
   auto stack = make_stack(ISA::Operation::RET);
   auto &returns = StackTestAccess::returns(stack);
-  returns.push(std::make_unique<Cell>(Cell{4}));
+  returns.push(std::make_shared<Cell>(Cell{4}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -164,9 +164,9 @@ TEST(StackTests, DispatchTransferRot) {
   const uint64_t a = 1;
   const uint64_t b = 2;
   const uint64_t c = 3;
-  data.push(std::make_unique<Cell>(Cell{c}));
-  data.push(std::make_unique<Cell>(Cell{b}));
-  data.push(std::make_unique<Cell>(Cell{a}));
+  data.push(std::make_shared<Cell>(Cell{c}));
+  data.push(std::make_shared<Cell>(Cell{b}));
+  data.push(std::make_shared<Cell>(Cell{a}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -184,9 +184,9 @@ TEST(StackTests, DispatchTransferTuck) {
   const uint64_t a = 20;
   const uint64_t b = 10;
   const uint64_t c = 7;
-  data.push(std::make_unique<Cell>(Cell{c}));
-  data.push(std::make_unique<Cell>(Cell{b}));
-  data.push(std::make_unique<Cell>(Cell{a}));
+  data.push(std::make_shared<Cell>(Cell{c}));
+  data.push(std::make_shared<Cell>(Cell{b}));
+  data.push(std::make_shared<Cell>(Cell{a}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -202,7 +202,7 @@ TEST(StackTests, DispatchTransferFetch) {
   std::vector<uint8_t> mem{0x11, 0x22, 0x33};
   auto stack = make_stack_with_data(ISA::Operation::FETCH, std::nullopt, mem);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{9}));
+  data.push(std::make_shared<Cell>(Cell{9}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -219,9 +219,9 @@ TEST(StackTests, DispatchControlMkClosureCallRestoresCapturedOrder) {
   Stack stack(std::move(program), std::move(data_bytes));
 
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{4}));
-  data.push(std::make_unique<Cell>(Cell{6}));
-  data.push(std::make_unique<Cell>(Cell{2}));
+  data.push(std::make_shared<Cell>(Cell{4}));
+  data.push(std::make_shared<Cell>(Cell{6}));
+  data.push(std::make_shared<Cell>(Cell{2}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -241,10 +241,10 @@ TEST(StackTests, DispatchControlMkClosureCallRestoresCapturedOrder) {
 TEST(StackTests, DispatchControlMkClosureConsumesCapturesAndLeavesHandle) {
   auto stack = make_stack(ISA::Operation::MKCLOSURE, 321);
   auto &data = StackTestAccess::data(stack);
-  data.push(std::make_unique<Cell>(Cell{99}));
-  data.push(std::make_unique<Cell>(Cell{4}));
-  data.push(std::make_unique<Cell>(Cell{6}));
-  data.push(std::make_unique<Cell>(Cell{2}));
+  data.push(std::make_shared<Cell>(Cell{99}));
+  data.push(std::make_shared<Cell>(Cell{4}));
+  data.push(std::make_shared<Cell>(Cell{6}));
+  data.push(std::make_shared<Cell>(Cell{2}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -259,7 +259,7 @@ TEST(StackTests, DispatchControlMutGlobalStoresPoppedValueByOperand) {
   auto stack = make_stack(ISA::Operation::MUTGLOBAL, 77);
   auto &data = StackTestAccess::data(stack);
   auto &globals = StackTestAccess::globals(stack);
-  data.push(std::make_unique<Cell>(Cell{42}));
+  data.push(std::make_shared<Cell>(Cell{42}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -274,7 +274,7 @@ TEST(StackTests, DispatchControlLoadGlobalPushesBoundValue) {
   auto stack = make_stack(ISA::Operation::LOADGLOBAL, 77);
   auto &data = StackTestAccess::data(stack);
   auto &globals = StackTestAccess::globals(stack);
-  globals[77] = std::make_unique<Cell>(Cell{42, false});
+  globals[77] = std::make_shared<Cell>(Cell{42, false});
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -293,7 +293,7 @@ TEST(StackTests, DispatchControlLoadGlobalClonesBoundCell) {
   auto stack = make_stack(ISA::Operation::LOADGLOBAL, 77);
   auto &data = StackTestAccess::data(stack);
   auto &globals = StackTestAccess::globals(stack);
-  globals[77] = std::make_unique<Cell>(Cell{42, true});
+  globals[77] = std::make_shared<Cell>(Cell{42, true});
   const auto *stored_ptr = globals[77].get();
 
   auto state = StackTestAccess::runInstruction(stack);

@@ -13,7 +13,7 @@ struct StackTestAccess {
     return stack.runInstruction();
   }
 
-  static std::stack<std::unique_ptr<Cell>> &data(Stack &stack) {
+  static std::stack<std::shared_ptr<Cell>> &data(Stack &stack) {
     return stack.data_stack;
   }
   static size_t &pc(Stack &stack) { return stack.pc; }

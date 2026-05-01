@@ -1,5 +1,5 @@
 config: 
-  cmake -S . -B build -DBUILD_TESTING=ON
+  cmake -S . -B build -DBUILD_TESTING=ON -DSPLISP_BUILD_VM=ON
 
 build: 
   cmake --build build

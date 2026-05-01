@@ -26,7 +26,7 @@ struct Cell {
 
 struct CodeEnv {
   uint64_t code_idx;
-  std::vector<std::unique_ptr<Cell>> captured_vars;
+  std::vector<std::shared_ptr<Cell>> captured_vars;
 };
 
 class Stack {
@@ -52,9 +52,9 @@ private:
   size_t pc = 0;
   MachineState machine_state = MachineState::OKAY;
 
-  std::map<core::SymbolId, std::unique_ptr<Cell>> global_tbl;
+  std::map<core::SymbolId, std::shared_ptr<Cell>> global_tbl;
   std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
-  std::stack<std::unique_ptr<Cell>> data_stack;
-  std::stack<std::unique_ptr<Cell>> return_stack;
+  std::stack<std::shared_ptr<Cell>> data_stack;
+  std::stack<std::shared_ptr<Cell>> return_stack;
 };

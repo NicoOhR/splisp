@@ -10,11 +10,11 @@
 
 namespace {
 
-std::unique_ptr<Cell> make_cell(uint64_t value, bool function = false) {
-  return std::make_unique<Cell>(Cell{value, function});
+std::shared_ptr<Cell> make_cell(uint64_t value, bool function = false) {
+  return std::make_shared<Cell>(Cell{value, function});
 }
 
-std::unique_ptr<Cell> clone_cell(const Cell &cell) {
+std::shared_ptr<Cell> clone_cell(const Cell &cell) {
   return make_cell(cell.value, cell.function);
 }
 
@@ -85,7 +85,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{a->value + b->value}));
+    data_stack.push(std::make_shared<Cell>(Cell{a->value + b->value}));
     break;
   }
   case (ISA::Operation::SUB): {
@@ -93,7 +93,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{a->value - b->value}));
+    data_stack.push(std::make_shared<Cell>(Cell{a->value - b->value}));
     break;
   }
   case (ISA::Operation::MUL): {
@@ -101,7 +101,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{a->value * b->value}));
+    data_stack.push(std::make_shared<Cell>(Cell{a->value * b->value}));
     break;
   }
   case (ISA::Operation::DIV): {
@@ -109,7 +109,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{a->value / b->value}));
+    data_stack.push(std::make_shared<Cell>(Cell{a->value / b->value}));
     break;
   }
   case (ISA::Operation::MOD): {
@@ -117,19 +117,19 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{a->value % b->value}));
+    data_stack.push(std::make_shared<Cell>(Cell{a->value % b->value}));
     break;
   }
   case (ISA::Operation::INC): {
     auto a = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{a->value + 1}));
+    data_stack.push(std::make_shared<Cell>(Cell{a->value + 1}));
     break;
   }
   case (ISA::Operation::DEC): {
     auto a = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{a->value - 1}));
+    data_stack.push(std::make_shared<Cell>(Cell{a->value - 1}));
     break;
   }
   case (ISA::Operation::MAX): {
@@ -137,7 +137,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{std::max(a->value, b->value)}));
+    data_stack.push(std::make_shared<Cell>(Cell{std::max(a->value, b->value)}));
     break;
   }
   case (ISA::Operation::MIN): {
@@ -145,7 +145,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(Cell{std::min(a->value, b->value)}));
+    data_stack.push(std::make_shared<Cell>(Cell{std::min(a->value, b->value)}));
     break;
   }
   default:
@@ -161,7 +161,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(
+    data_stack.push(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value < b->value ? 1 : 0)}));
     break;
   }
@@ -170,7 +170,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(
+    data_stack.push(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value <= b->value ? 1 : 0)}));
     break;
   }
@@ -179,7 +179,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(
+    data_stack.push(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value == b->value ? 1 : 0)}));
     break;
   }
@@ -188,7 +188,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(
+    data_stack.push(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value >= b->value ? 1 : 0)}));
     break;
   }
@@ -197,7 +197,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     data_stack.pop();
     auto b = std::move(data_stack.top());
     data_stack.pop();
-    data_stack.push(std::make_unique<Cell>(
+    data_stack.push(std::make_shared<Cell>(
         Cell{static_cast<uint64_t>(a->value > b->value ? 1 : 0)}));
     break;
   }
@@ -247,7 +247,7 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   }
   case (ISA::Operation::NROT): {
     // stupid implementations are stupid
-    auto tmp = std::list<std::unique_ptr<Cell>>();
+    auto tmp = std::list<std::shared_ptr<Cell>>();
     // append from stack in decending order
     for (auto i = 0; i < operand; i++) {
       tmp.push_front(std::move(data_stack.top()));
@@ -277,7 +277,7 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     break;
   }
   case (ISA::Operation::NTUCK): {
-    auto tmp = std::list<std::unique_ptr<Cell>>();
+    auto tmp = std::list<std::shared_ptr<Cell>>();
     // append from stack in decending order
     for (auto i = 0; i < operand; i++) {
       tmp.push_front(std::move(data_stack.top()));
