@@ -31,7 +31,8 @@ struct CodeEnv {
 
 class Stack {
 public:
-  Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data);
+  Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data,
+        bool dbg = false);
   // run instruction and handle state
   void advanceProgram();
   MachineState run_program();
@@ -41,6 +42,7 @@ private:
   // dispatches to the handlers
   MachineState runInstruction();
   MachineState setState(MachineState next);
+  bool dbg;
 
   // I am almost certain there is a better way to propagate
   // the machine error that does not throw a program exception
@@ -53,7 +55,7 @@ private:
   MachineState machine_state = MachineState::OKAY;
 
   std::map<core::SymbolId, std::shared_ptr<Cell>> global_tbl;
-  std::uint8_t frame_base = 0;
+  std::size_t frame_base = 0;
   std::vector<CodeEnv> heap;
   std::vector<uint8_t> program_mem;
   std::vector<std::shared_ptr<Cell>> data_stack;

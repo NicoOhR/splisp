@@ -69,7 +69,8 @@ void Scoper::run(ast::AST &ast) {
                   case (ast::Keyword::define): {
                     if (parent != &scoper->root) {
                       throw std::invalid_argument(
-                          "Define is only allowed at the top level");
+                          "Define is only allowed at the top level, use letrec "
+                          "instead");
                     }
                     // List(Kword(Define) Symbol(name) ...)
                     if (auto *name =

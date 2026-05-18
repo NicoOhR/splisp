@@ -20,8 +20,10 @@ std::shared_ptr<Cell> clone_cell(const Cell &cell) {
 
 } // namespace
 
-Stack::Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data) {
+Stack::Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data,
+             bool dbg) {
   std::vector<uint8_t> program_bytes;
+  this->dbg = dbg;
   for (auto instr : program) {
     auto tmp = instr.to_bytes();
     program_bytes.insert(program_bytes.end(), tmp.begin(), tmp.end());
@@ -60,6 +62,17 @@ MachineState Stack::run_program() {
 MachineState Stack::runInstruction() {
   uint8_t curr = this->program_mem[this->pc];
   const auto spec = ISA::spec_list[curr];
+  if (this->dbg) {
+    std::cerr << "pc=" << this->pc << " op=" << spec.mnemonic << " stack=[";
+    for (size_t i = 0; i < this->data_stack.size(); ++i) {
+      if (i)
+        std::cerr << ", ";
+      std::cerr << this->data_stack[i]->value;
+      if (this->data_stack[i]->function)
+        std::cerr << "f";
+    }
+    std::cerr << "]\n";
+  }
   switch (spec.operation) {
   case (ISA::OperationKind::ARITHMETIC): {
     return setState(this->handleArithmetic(curr, spec));
@@ -93,7 +106,8 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
-    data_stack.push_back(std::make_shared<Cell>(Cell{a->value - b->value}));
+    data_stack.push_back(std::make_shared<Cell>(
+        Cell{.value = a->value - b->value, .function = false}));
     break;
   }
   case (ISA::Operation::MUL): {
@@ -137,7 +151,8 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
-    data_stack.push_back(std::make_shared<Cell>(Cell{std::max(a->value, b->value)}));
+    data_stack.push_back(
+        std::make_shared<Cell>(Cell{std::max(a->value, b->value)}));
     break;
   }
   case (ISA::Operation::MIN): {
@@ -145,7 +160,8 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
-    data_stack.push_back(std::make_shared<Cell>(Cell{std::min(a->value, b->value)}));
+    data_stack.push_back(
+        std::make_shared<Cell>(Cell{std::min(a->value, b->value)}));
     break;
   }
   default:
@@ -252,7 +268,8 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   }
   case (ISA::Operation::PICK): {
     // PICK n: push a copy of the item at depth n (0 = top).
-    data_stack.push_back(clone_cell(*data_stack[data_stack.size() - 1 - operand]));
+    data_stack.push_back(
+        clone_cell(*data_stack[data_stack.size() - 1 - operand]));
     break;
   }
   default:
@@ -268,10 +285,11 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // MKCLOSURE consumed them.
     this->return_stack.push(make_cell(this->pc, true));
     auto heap_idx = this->data_stack.back()->value;
+    std::cout << heap_idx << std::endl;
     data_stack.pop_back();
     CodeEnv *env = &this->heap[heap_idx];
-    for (size_t i = env->captured_vars.size(); i > 0; --i) {
-      this->data_stack.push_back(clone_cell(*env->captured_vars[i - 1]));
+    for (size_t i = 0; i < env->captured_vars.size(); ++i) {
+      this->data_stack.push_back(env->captured_vars[i]);
     }
     this->pc = env->code_idx;
     break;
@@ -309,24 +327,18 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     return setState(MachineState::HALT);
   }
   case (ISA::Operation::MKCLOSURE): {
-    // Stack contract:
-    //   ... captured_1 captured_2 ... captured_n n
-    // becomes
-    //   ... closure_handle
-    // where captured_n is at the top before n is popped. Captures are moved
-    // into the heap env and later restored by CALL in the original order.
+    // take as operand the closure label
+    // capture everything in the current frame by taking the shared pointer and
+    // adding it to the code env
     CodeEnv ret;
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    auto n = std::move(this->data_stack.back());
-    this->data_stack.pop_back();
-    for (size_t i = 0; i < n->value; i++) {
-      auto a = std::move(this->data_stack.back());
-      this->data_stack.pop_back();
-      ret.captured_vars.push_back(std::move(a));
+    for (size_t i = this->frame_base; i < this->data_stack.size(); i++) {
+      ret.captured_vars.push_back(this->data_stack[i]);
     }
     ret.code_idx = operand;
     this->heap.push_back(std::move(ret));
     this->data_stack.push_back(make_cell(this->heap.size() - 1, true));
+    std::cout << this->heap.size() << std::endl;
     break;
   }
   case (ISA::Operation::MKGLOBAL): {
@@ -346,7 +358,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     //  2. read from global table and copy it to the stack
     const uint64_t operand = read_operand(this->program_mem, this->pc);
     this->data_stack.push_back(make_cell(this->global_tbl[operand]->value,
-                                    this->global_tbl[operand]->function));
+                                         this->global_tbl[operand]->function));
     break;
   }
   case (ISA::Operation::MUTGLOBAL): {
@@ -355,6 +367,28 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     auto value = std::move(this->data_stack.back());
     this->data_stack.pop_back();
     this->global_tbl[operand] = std::move(value);
+    break;
+  }
+  case (ISA::Operation::ENTER): {
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    this->frame_base = this->data_stack.size() - operand;
+    break;
+  }
+  case (ISA::Operation::GET_LOCAL): {
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    this->data_stack.push_back(
+        clone_cell(*this->data_stack[this->frame_base + operand]));
+    break;
+  }
+  case (ISA::Operation::SET_LOCAL): {
+    // Take as operand the index in the local frame of the variable we'd like to
+    // mutate take the value off the top of the stack and mutate the value of
+    // the cell at the target index but maintain the pointer, every environment
+    // which sees this value will have the mutated value in it
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    auto value = std::move(data_stack.back());
+    *data_stack[frame_base + operand] = *value;
+    data_stack.pop_back();
     break;
   }
   default:

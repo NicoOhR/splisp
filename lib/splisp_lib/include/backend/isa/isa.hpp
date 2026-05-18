@@ -39,7 +39,10 @@ enum class Operation : uint8_t {
   MKGLOBAL,
   LOADGLOBAL,
   MUTGLOBAL,
-  PICK
+  PICK,
+  ENTER,
+  GET_LOCAL,
+  SET_LOCAL,
 };
 
 enum class OperandKind { NONE, U64, ADD };
@@ -61,7 +64,7 @@ struct Spec {
 };
 
 constexpr std::size_t op_count =
-    static_cast<std::size_t>(Operation::PICK) + 1;
+    static_cast<std::size_t>(Operation::SET_LOCAL) + 1;
 inline constexpr std::array<Spec, op_count> spec_list{
     {{"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
      {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
@@ -80,7 +83,6 @@ inline constexpr std::array<Spec, op_count> spec_list{
      {"drop", OperandKind::NONE, OperationKind::TRANSFER, 1, 0},
      {"dup", OperandKind::NONE, OperationKind::TRANSFER, 1, 2},
      {"swap", OperandKind::NONE, OperationKind::TRANSFER, 2, 2},
-     // NROT has variable stack effect based on the operand.
      {"nrot", OperandKind::U64, OperationKind::TRANSFER, 0, 0},
      {"push", OperandKind::U64, OperationKind::TRANSFER, 0, 1},
      {"call", OperandKind::ADD, OperationKind::CONTROL, 0, 0},
@@ -93,11 +95,14 @@ inline constexpr std::array<Spec, op_count> spec_list{
      {"mkglobal", OperandKind::U64, OperationKind::CONTROL, 1, 0},
      {"loadglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0},
      {"mutglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0},
-     {"pick", OperandKind::U64, OperationKind::TRANSFER, 0, 1}}};
+     {"pick", OperandKind::U64, OperationKind::TRANSFER, 0, 1},
+     {"enter", OperandKind::U64, OperationKind::CONTROL, 0, 0},
+     {"get_local", OperandKind::U64, OperationKind::CONTROL, 0, 1},
+     {"set_local", OperandKind::U64, OperationKind::CONTROL, 1, 0}}};
 
 struct Instruction {
-  Operation op;                    // already a byte
-  std::optional<uint64_t> operand; // can be converted to a byte
+  Operation op;
+  std::optional<uint64_t> operand;
   std::array<uint8_t, 9> to_bytes() const;
 };
 } // namespace ISA

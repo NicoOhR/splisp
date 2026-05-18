@@ -19,10 +19,13 @@ struct StackTestAccess {
   static std::stack<std::shared_ptr<Cell>> &returns(Stack &stack) {
     return stack.return_stack;
   }
-  static std::map<core::SymbolId, std::shared_ptr<Cell>> &globals(Stack &stack) {
+  static std::map<core::SymbolId, std::shared_ptr<Cell>> &
+  globals(Stack &stack) {
     return stack.global_tbl;
   }
   static size_t &pc(Stack &stack) { return stack.pc; }
+  static size_t &frame_base(Stack &stack) { return stack.frame_base; }
+  static std::vector<CodeEnv> &heap(Stack &stack) { return stack.heap; }
 };
 
 namespace {
@@ -35,7 +38,6 @@ Stack make_stack(ISA::Operation op, std::optional<uint64_t> operand = {}) {
   std::vector<uint8_t> data{};
   return Stack(std::move(program), std::move(data));
 }
-
 
 TEST(StackTests, DispatchArithmeticAdd) {
   auto stack = make_stack(ISA::Operation::ADD);
@@ -152,50 +154,66 @@ TEST(StackTests, DispatchControlRet) {
   EXPECT_EQ(returns.size(), 0U);
 }
 
-
-TEST(StackTests, DispatchControlMkClosureCallRestoresCapturedOrder) {
+TEST(StackTests, DispatchControlMkClosureCapturesFrameSlotsBySharing) {
+  // MKCLOSURE should share the same Cell objects from the frame — not clone
+  // them. Verified by checking pointer identity between captured_vars and
+  // original slots.
   std::vector<ISA::Instruction> program{
+      {ISA::Operation::ENTER, 2},
+      {ISA::Operation::MKCLOSURE, 999},
+  };
+  Stack stack(std::move(program), std::vector<uint8_t>{}, true);
+  auto &data = StackTestAccess::data(stack);
+  data.push_back(std::make_shared<Cell>(Cell{4}));
+  data.push_back(std::make_shared<Cell>(Cell{6}));
+
+  const Cell *ptr0 = data[0].get();
+  const Cell *ptr1 = data[1].get();
+
+  StackTestAccess::runInstruction(stack); // ENTER 2: frame_base = 0
+  EXPECT_EQ(StackTestAccess::frame_base(stack), 0U);
+
+  StackTestAccess::pc(stack) += kInstrSize;
+  auto state = StackTestAccess::runInstruction(stack); // MKCLOSURE 999
+  EXPECT_EQ(state, MachineState::OKAY);
+
+  auto &heap = StackTestAccess::heap(stack);
+  ASSERT_EQ(heap.size(), 1U);
+  EXPECT_EQ(heap[0].code_idx, 999U);
+  ASSERT_EQ(heap[0].captured_vars.size(), 2U);
+  EXPECT_EQ(heap[0].captured_vars[0].get(), ptr0); // shared, not cloned
+  EXPECT_EQ(heap[0].captured_vars[1].get(), ptr1);
+}
+
+TEST(StackTests, DispatchControlMkClosureCallRestoresSharedCapturesInOrder) {
+  // CALL should restore captured_vars in left-to-right order (slot 0 deepest).
+  std::vector<ISA::Instruction> program{
+      {ISA::Operation::ENTER, 2},
       {ISA::Operation::MKCLOSURE, 123},
       {ISA::Operation::CALL, std::nullopt},
   };
-  std::vector<uint8_t> data_bytes{};
-  Stack stack(std::move(program), std::move(data_bytes));
-
+  Stack stack(std::move(program), std::vector<uint8_t>{});
   auto &data = StackTestAccess::data(stack);
   data.push_back(std::make_shared<Cell>(Cell{4}));
   data.push_back(std::make_shared<Cell>(Cell{6}));
-  data.push_back(std::make_shared<Cell>(Cell{2}));
 
-  auto state = StackTestAccess::runInstruction(stack);
-  EXPECT_EQ(state, MachineState::OKAY);
-  ASSERT_EQ(data.size(), 1U);
-  EXPECT_EQ(data.back()->value, 0U);
+  const Cell *ptr0 = data[0].get();
+  const Cell *ptr1 = data[1].get();
 
+  StackTestAccess::runInstruction(stack); // ENTER 2
   StackTestAccess::pc(stack) += kInstrSize;
-  state = StackTestAccess::runInstruction(stack);
+  StackTestAccess::runInstruction(stack); // MKCLOSURE 123: handle on top
+
+  EXPECT_TRUE(data.back()->function); // handle is marked as function
+  StackTestAccess::pc(stack) += kInstrSize;
+  auto state = StackTestAccess::runInstruction(stack); // CALL
   EXPECT_EQ(state, MachineState::OKAY);
   EXPECT_EQ(StackTestAccess::pc(stack), 123U);
-  ASSERT_EQ(data.size(), 2U);
-  EXPECT_EQ(data.back()->value, 6U);
-  data.pop_back();
-  EXPECT_EQ(data.back()->value, 4U);
-}
 
-TEST(StackTests, DispatchControlMkClosureConsumesCapturesAndLeavesHandle) {
-  auto stack = make_stack(ISA::Operation::MKCLOSURE, 321);
-  auto &data = StackTestAccess::data(stack);
-  data.push_back(std::make_shared<Cell>(Cell{99}));
-  data.push_back(std::make_shared<Cell>(Cell{4}));
-  data.push_back(std::make_shared<Cell>(Cell{6}));
-  data.push_back(std::make_shared<Cell>(Cell{2}));
-
-  auto state = StackTestAccess::runInstruction(stack);
-  EXPECT_EQ(state, MachineState::OKAY);
-  ASSERT_EQ(data.size(), 2U);
-  EXPECT_TRUE(data.back()->function);
-  EXPECT_EQ(data.back()->value, 0U);
-  data.pop_back();
-  EXPECT_EQ(data.back()->value, 99U);
+  // captures restored in original order: slot 0 deeper, slot 1 on top
+  ASSERT_GE(data.size(), 2U);
+  EXPECT_EQ(data[data.size() - 2].get(), ptr0);
+  EXPECT_EQ(data[data.size() - 1].get(), ptr1);
 }
 
 TEST(StackTests, DispatchControlMutGlobalStoresPoppedValueByOperand) {
@@ -250,6 +268,106 @@ TEST(StackTests, DispatchControlLoadGlobalClonesBoundCell) {
   EXPECT_EQ(globals[77].get(), stored_ptr);
   EXPECT_EQ(globals[77]->value, 42U);
   EXPECT_TRUE(globals[77]->function);
+}
+
+TEST(StackTests, DispatchControlEnterSetsFrameBase) {
+  auto stack = make_stack(ISA::Operation::ENTER, 2);
+  auto &data = StackTestAccess::data(stack);
+  data.push_back(std::make_shared<Cell>(Cell{10}));
+  data.push_back(std::make_shared<Cell>(Cell{20}));
+  data.push_back(std::make_shared<Cell>(Cell{30}));
+
+  auto state = StackTestAccess::runInstruction(stack);
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(data.size(), 3U);
+  EXPECT_EQ(StackTestAccess::frame_base(stack), 1U); // size(3) - n(2) = 1
+}
+
+TEST(StackTests, DispatchControlGetLocalPushesCloneAtFrameOffset) {
+  std::vector<ISA::Instruction> program{
+      {ISA::Operation::ENTER, 3},
+      {ISA::Operation::GET_LOCAL, 1},
+  };
+  Stack stack(std::move(program), std::vector<uint8_t>{});
+
+  auto &data = StackTestAccess::data(stack);
+  data.push_back(std::make_shared<Cell>(Cell{10}));
+  data.push_back(std::make_shared<Cell>(Cell{20}));
+  data.push_back(std::make_shared<Cell>(Cell{30}));
+
+  auto state =
+      StackTestAccess::runInstruction(stack); // ENTER 3: frame_base = 0
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_EQ(StackTestAccess::frame_base(stack), 0U);
+
+  const auto *slot1_ptr = data[1].get();
+  StackTestAccess::pc(stack) += kInstrSize;
+  state = StackTestAccess::runInstruction(
+      stack); // GET_LOCAL 1: push clone of data[0+1]
+  EXPECT_EQ(state, MachineState::OKAY);
+  ASSERT_EQ(data.size(), 4U);
+  EXPECT_EQ(data.back()->value, 20U);
+  EXPECT_NE(data.back().get(), slot1_ptr); // cloned, not the same pointer
+}
+
+TEST(StackTests, DispatchControlSetLocalMutatesInPlace) {
+  // SET_LOCAL should update the value of the existing Cell object, not replace
+  // the shared_ptr. Verified by checking pointer identity before and after.
+  std::vector<ISA::Instruction> program{
+      {ISA::Operation::ENTER, 3},
+      {ISA::Operation::SET_LOCAL, 1},
+  };
+  Stack stack(std::move(program), std::vector<uint8_t>{});
+
+  auto &data = StackTestAccess::data(stack);
+  data.push_back(std::make_shared<Cell>(Cell{10}));
+  data.push_back(std::make_shared<Cell>(Cell{20}));
+  data.push_back(std::make_shared<Cell>(Cell{30}));
+
+  auto state =
+      StackTestAccess::runInstruction(stack); // ENTER 3: frame_base = 0
+  EXPECT_EQ(state, MachineState::OKAY);
+
+  const Cell *slot1_ptr = data[1].get(); // snapshot before mutation
+  data.push_back(std::make_shared<Cell>(Cell{99}));
+  StackTestAccess::pc(stack) += kInstrSize;
+  state = StackTestAccess::runInstruction(stack); // SET_LOCAL 1
+  EXPECT_EQ(state, MachineState::OKAY);
+  ASSERT_EQ(data.size(), 3U);
+  EXPECT_EQ(data[0]->value, 10U);
+  EXPECT_EQ(data[1]->value, 99U);
+  EXPECT_EQ(data[2]->value, 30U);
+  EXPECT_EQ(data[1].get(), slot1_ptr); // same Cell object, mutated in place
+}
+
+TEST(StackTests, DispatchControlSetLocalMutationVisibleThroughSharedCapture) {
+  // The key letrec property: a Cell captured by MKCLOSURE and then mutated via
+  // SET_LOCAL should reflect the new value through the capture.
+  std::vector<ISA::Instruction> program{
+      {ISA::Operation::ENTER, 1},
+      {ISA::Operation::MKCLOSURE, 999},
+      {ISA::Operation::SET_LOCAL, 0},
+  };
+  Stack stack(std::move(program), std::vector<uint8_t>{});
+  auto &data = StackTestAccess::data(stack);
+  data.push_back(std::make_shared<Cell>(Cell{0})); // undef placeholder
+
+  StackTestAccess::runInstruction(stack); // ENTER 1: frame_base = 0
+  StackTestAccess::pc(stack) += kInstrSize;
+
+  StackTestAccess::runInstruction(
+      stack); // MKCLOSURE 999: captures slot 0 by sharing
+  auto &heap = StackTestAccess::heap(stack);
+  ASSERT_EQ(heap.size(), 1U);
+  EXPECT_EQ(heap[0].captured_vars[0]->value, 0U); // still undef at capture time
+  StackTestAccess::pc(stack) += kInstrSize;
+
+  data.push_back(std::make_shared<Cell>(Cell{42}));
+  StackTestAccess::runInstruction(
+      stack); // SET_LOCAL 0: mutates slot 0 in place
+
+  // The closure's captured Cell sees the mutation — this is what enables letrec
+  EXPECT_EQ(heap[0].captured_vars[0]->value, 42U);
 }
 
 } // namespace

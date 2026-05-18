@@ -84,10 +84,14 @@ void Generator::emit_top_define(const core::Define &def) {
   this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::RET});
 };
 
-void Generator::emit_define(const core::Define &def) {
-  // function which emits scoped definitions
+void Generator::emit_lambda(const core::Lambda &lambda) {
+  this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::ENTER,
+                                            .operand = lambda.formals.size()});
+  for (auto &&expr : lambda.body) {
+    Generator::emit_expr(*expr); // idk about the deref
+  }
+  // emit postamble
 };
-void Generator::emit_lambda(const core::Lambda &lambda) {};
 void Generator::emit_apply(const core::Apply &application) {};
 void Generator::emit_var(const core::Var &variable) {
 
