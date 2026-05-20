@@ -3,6 +3,7 @@
 #include <backend/isa/isa.hpp>
 #include <exception>
 #include <frontend/ast.hpp>
+#include <frontend/core.hpp>
 #include <iostream>
 #include <stdexcept>
 #include <type_traits>
@@ -93,23 +94,34 @@ void Generator::emit_top_define(const core::Define &def) {
 };
 
 void Generator::emit_lambda(const core::Lambda &lambda) {
-  // JMP        #past the function definition
+  // JMP        #jump to MKCLOSURE
   // ENTER
   // emit<expr> #generate the body
   // LEAVE; RET #function clean up
-  // MKCLOSURE  #capture into code env all variables in current frame
+  // MKCLOSURE  #capture frame, pointing to ENTER
+
+  for (int i = 0; i < lambda.formals.size(); i++) {
+    const auto symbol_id = *lambda.formals.at(i);
+    this->local_symbols[symbol_id] = i;
+  }
+
+  const auto jmp_idx = this->bytecode.size();
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::JMP, .operand = 0});
+  const auto enter_idx = this->bytecode.size();
   this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::ENTER,
                                             .operand = lambda.formals.size()});
   for (auto &&expr : lambda.body) {
-    Generator::emit_expr(*expr); // idk about the deref
+    Generator::emit_expr(*expr);
   }
   this->bytecode.push_back(
       Instruction{.op = ISA::Operation::LEAVE, .operand = 0});
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::RET, .operand = 0});
-  this->bytecode.push_back(ISA::Instruction{
-      .op = ISA::Operation::MKCLOSURE,
-      .operand = 0}); // operand is blank on the first go around
+  const auto mk_idx = this->bytecode.size();
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::MKCLOSURE, .operand = enter_idx});
+  this->bytecode[jmp_idx].operand = mk_idx;
 };
 void Generator::emit_apply(const core::Apply &application) {};
 void Generator::emit_var(const core::Var &variable) {
