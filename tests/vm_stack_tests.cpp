@@ -286,7 +286,7 @@ TEST(StackTests, DispatchControlEnterSetsFrameBase) {
 TEST(StackTests, DispatchControlGetLocalPushesCloneAtFrameOffset) {
   std::vector<ISA::Instruction> program{
       {ISA::Operation::ENTER, 3},
-      {ISA::Operation::GET_LOCAL, 1},
+      {ISA::Operation::GETLOCAL, 1},
   };
   Stack stack(std::move(program), std::vector<uint8_t>{});
 
@@ -311,11 +311,11 @@ TEST(StackTests, DispatchControlGetLocalPushesCloneAtFrameOffset) {
 }
 
 TEST(StackTests, DispatchControlSetLocalMutatesInPlace) {
-  // SET_LOCAL should update the value of the existing Cell object, not replace
+  // SETLOCAL should update the value of the existing Cell object, not replace
   // the shared_ptr. Verified by checking pointer identity before and after.
   std::vector<ISA::Instruction> program{
       {ISA::Operation::ENTER, 3},
-      {ISA::Operation::SET_LOCAL, 1},
+      {ISA::Operation::SETLOCAL, 1},
   };
   Stack stack(std::move(program), std::vector<uint8_t>{});
 
@@ -340,13 +340,82 @@ TEST(StackTests, DispatchControlSetLocalMutatesInPlace) {
   EXPECT_EQ(data[1].get(), slot1_ptr); // same Cell object, mutated in place
 }
 
+TEST(StackTests, DispatchControlCallPopsHandleAndPushesReturnAddress) {
+  // CALL must pop the closure handle from data_stack and push the caller's PC
+  // onto the return stack.
+  std::vector<ISA::Instruction> program{
+      {ISA::Operation::ENTER, 0},
+      {ISA::Operation::MKCLOSURE, 77},
+      {ISA::Operation::CALL, std::nullopt},
+  };
+  Stack stack(std::move(program), std::vector<uint8_t>{});
+  auto &data = StackTestAccess::data(stack);
+  auto &returns = StackTestAccess::returns(stack);
+
+  StackTestAccess::runInstruction(stack); // ENTER 0
+  StackTestAccess::pc(stack) += kInstrSize;
+  StackTestAccess::runInstruction(stack); // MKCLOSURE 77
+  ASSERT_EQ(data.size(), 1U);
+  EXPECT_TRUE(data.back()->function);
+
+  const size_t call_pc = StackTestAccess::pc(stack) + kInstrSize;
+  StackTestAccess::pc(stack) += kInstrSize;
+  auto state = StackTestAccess::runInstruction(stack); // CALL
+
+  EXPECT_EQ(state, MachineState::OKAY);
+  EXPECT_TRUE(data.empty()); // handle was popped, no captures to restore
+  ASSERT_EQ(returns.size(), 1U);
+  EXPECT_EQ(returns.top()->value, call_pc); // return address is the CALL site
+}
+
+TEST(StackTests, DispatchControlCallRetRoundtrip) {
+  // CALL saves its own pc on the return stack; RET restores it.
+  // run_program then advances +9 past CALL, but here we just verify the raw
+  // return address is the CALL instruction's byte offset.
+  //
+  // Layout (each instruction = 9 bytes):
+  //   byte  0: ENTER 0
+  //   byte  9: MKCLOSURE 36
+  //   byte 18: CALL          ← return address saved here
+  //   byte 27: HALT
+  //   byte 36: ENTER 0       ← body
+  //   byte 45: RET
+  std::vector<ISA::Instruction> program{
+      {ISA::Operation::ENTER, 0},
+      {ISA::Operation::MKCLOSURE, 36},
+      {ISA::Operation::CALL, std::nullopt},
+      {ISA::Operation::HALT, std::nullopt},
+      {ISA::Operation::ENTER, 0},
+      {ISA::Operation::RET, std::nullopt},
+  };
+  Stack stack(std::move(program), std::vector<uint8_t>{});
+  auto &returns = StackTestAccess::returns(stack);
+
+  StackTestAccess::runInstruction(stack); // ENTER 0 at byte 0
+  StackTestAccess::pc(stack) += kInstrSize;
+  StackTestAccess::runInstruction(stack); // MKCLOSURE 36 at byte 9
+  StackTestAccess::pc(stack) += kInstrSize;
+
+  StackTestAccess::runInstruction(stack); // CALL at byte 18 → pc jumps to 36
+  EXPECT_EQ(StackTestAccess::pc(stack), 36U);
+  ASSERT_EQ(returns.size(), 1U);
+  EXPECT_EQ(returns.top()->value, 18U); // return address = CALL's own pc
+
+  StackTestAccess::runInstruction(stack); // ENTER 0 at byte 36
+  StackTestAccess::pc(stack) += kInstrSize;
+  auto ret_state = StackTestAccess::runInstruction(stack); // RET at byte 45
+  EXPECT_EQ(ret_state, MachineState::OKAY);
+  EXPECT_EQ(StackTestAccess::pc(stack), 18U); // restored to CALL's pc
+  EXPECT_EQ(returns.size(), 0U);
+}
+
 TEST(StackTests, DispatchControlSetLocalMutationVisibleThroughSharedCapture) {
   // The key letrec property: a Cell captured by MKCLOSURE and then mutated via
   // SET_LOCAL should reflect the new value through the capture.
   std::vector<ISA::Instruction> program{
       {ISA::Operation::ENTER, 1},
       {ISA::Operation::MKCLOSURE, 999},
-      {ISA::Operation::SET_LOCAL, 0},
+      {ISA::Operation::SETLOCAL, 0},
   };
   Stack stack(std::move(program), std::vector<uint8_t>{});
   auto &data = StackTestAccess::data(stack);

@@ -13,9 +13,10 @@ enum Keyword { if_expr, let, letrec, lambda, define, set };
 
 struct SExp;
 
-// this needs to be shared with core
+using SymbolId = std::uint64_t;
+
 struct SymbolID {
-  uint64_t id;
+  SymbolId id;
 };
 
 struct Undef {};

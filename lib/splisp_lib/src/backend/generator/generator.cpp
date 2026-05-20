@@ -1,8 +1,14 @@
+#include <algorithm>
 #include <backend/generator/generator.hpp>
 #include <backend/isa/isa.hpp>
+#include <exception>
 #include <frontend/ast.hpp>
+#include <iostream>
+#include <stdexcept>
 #include <type_traits>
 #include <variant>
+
+using ISA::Instruction;
 
 void Generator::generate() {
   for (auto &top : this->program) {
@@ -79,20 +85,44 @@ void Generator::emit_const(const core::Const &const_var) {
 void Generator::emit_top_define(const core::Define &def) {
   // function which defines top level (global) defintion
   Generator::emit_expr(*def.rhs);
+  this->global_symbols.push_back(def.name);
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::MKGLOBAL, .operand = def.name});
-  this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::RET});
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::RET, .operand = 0});
 };
 
 void Generator::emit_lambda(const core::Lambda &lambda) {
+  // JMP        #past the function definition
+  // ENTER
+  // emit<expr> #generate the body
+  // LEAVE; RET #function clean up
+  // MKCLOSURE  #capture into code env all variables in current frame
   this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::ENTER,
                                             .operand = lambda.formals.size()});
   for (auto &&expr : lambda.body) {
     Generator::emit_expr(*expr); // idk about the deref
   }
-  // emit postamble
+  this->bytecode.push_back(
+      Instruction{.op = ISA::Operation::LEAVE, .operand = 0});
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::RET, .operand = 0});
+  this->bytecode.push_back(ISA::Instruction{
+      .op = ISA::Operation::MKCLOSURE,
+      .operand = 0}); // operand is blank on the first go around
 };
 void Generator::emit_apply(const core::Apply &application) {};
 void Generator::emit_var(const core::Var &variable) {
-
+  if (std::find(this->global_symbols.begin(), this->global_symbols.end(),
+                variable.id) != this->global_symbols.end()) {
+    this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::LOADGLOBAL,
+                                              .operand = variable.id});
+  } else if (this->local_symbols.find(variable.id) !=
+             this->local_symbols.end()) {
+    this->bytecode.push_back(
+        ISA::Instruction{.op = ISA::Operation::GETLOCAL,
+                         .operand = this->local_symbols[variable.id]});
+  } else {
+    std::cerr << "Variable not found" << std::endl;
+  }
 };

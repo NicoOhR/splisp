@@ -429,6 +429,7 @@ void print_program(const Program &program) {
   for (const auto &top : program) {
     print_top(top, 1);
   }
+  std::cout << std::endl;
 }
 
 } // namespace core

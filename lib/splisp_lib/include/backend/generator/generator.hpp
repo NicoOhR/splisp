@@ -1,7 +1,9 @@
 #pragma once
 
+#include "frontend/ast.hpp"
 #include <backend/isa/isa.hpp>
 #include <frontend/core.hpp>
+#include <map>
 #include <optional>
 #include <string>
 
@@ -13,6 +15,9 @@ public:
 private:
   friend struct GeneratorTestAccess;
   const core::Program &program;
+  std::vector<core::SymbolId> global_symbols;
+  // symbol name -> index in the formals list/code env
+  std::map<core::SymbolId, size_t> local_symbols;
   std::vector<ISA::Instruction> bytecode;
   void emit_top(const core::Top &top);
   void emit_expr(const core::Expr &expr);
@@ -22,4 +27,10 @@ private:
   void emit_apply(const core::Apply &application);
   void emit_var(const core::Var &variable);
   void emit_const(const core::Const &const_var);
+
+  const std::map<core::SymbolId, ISA::Operation> builtins = {
+      {0, ISA::Operation::ADD}, {1, ISA::Operation::SUB},
+      {2, ISA::Operation::MUL}, {3, ISA::Operation::DIV},
+      {4, ISA::Operation::MOD},
+  };
 };

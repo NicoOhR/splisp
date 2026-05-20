@@ -14,6 +14,7 @@ set(SPLISP_TEST_SOURCES
   lexer_parser_tests.cpp
   lowerer_tests.cpp
   scoper_tests.cpp
+  generator_tests.cpp
 )
 
 if(SPLISP_BUILD_VM)

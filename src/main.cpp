@@ -12,12 +12,17 @@ int main() {
   //     (even? 4))
   // )";
 
+  // std::string program = R"(
+  //   (define (add-then-double x y)
+  //     (letrec ((sum (+ x y)))
+  //       (* sum 2)))
+  //   (add-then-double 3 4)
+  // )";
+
   std::string program = R"(
-    (define (add-then-double x y)
-      (letrec ((sum (+ x y)))
-        (* sum 2)))
-    (add-then-double 3 4)
+    ((lambda (x) (* x x)) 5)
   )";
+
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

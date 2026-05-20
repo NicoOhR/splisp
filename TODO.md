@@ -17,5 +17,5 @@
 - ~~Fix `MKCLOSURE` capture storage to match the `Cell` representation.~~
 - ~~Add globals ops (`GLOAD`/`GSTORE` or `LOADGLOBAL`/`MKGLOBAL`) and wire them in.~~
 - ~~Add a mutation/store op for `set!` and implement it in the VM.~~
-- ~~Add `ENTER`, `GET_LOCAL`, `SET_LOCAL` ops to ISA and implement in VM (see `docs/local_frame_ops.md`).~~
+- ~~Add `ENTER`, `GETLOCAL`, `SETLOCAL` ops to ISA and implement in VM (see `docs/local_frame_ops.md`).~~
 - ~~Add `frame_base` scalar field to `Stack`.~~

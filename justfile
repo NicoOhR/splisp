@@ -9,3 +9,6 @@ n_vm:
 
 test: 
   GTEST_COLOR=1 ctest --test-dir build --output-on-failure
+
+test_fail:
+  GTEST_COLOR=1 ctest --rerun-failed --test-dir build --output-on-failure

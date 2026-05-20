@@ -8,13 +8,12 @@
 namespace core {
 struct Expr;
 
-using SymbolId = std::uint64_t;
+using SymbolId = ast::SymbolId;
+using Undef = ast::Undef;
 
 struct Const {
   uint64_t value;
 };
-
-struct Undef {};
 
 struct Var {
   SymbolId id;

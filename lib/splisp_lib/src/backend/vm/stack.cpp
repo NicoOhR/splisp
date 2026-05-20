@@ -282,11 +282,11 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
   case (ISA::Operation::CALL): {
     // Closure handles are heap indexes. Calling one restores captured values so
     // the callee sees the same left-to-right stack order they had before
-    // MKCLOSURE consumed them.
+    // MKCLOSURE consumed them. The closure
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    const auto heap_idx = this->data_stack[operand]->value;
     this->return_stack.push(make_cell(this->pc, true));
-    auto heap_idx = this->data_stack.back()->value;
-    std::cout << heap_idx << std::endl;
-    data_stack.pop_back();
+    data_stack.erase(this->data_stack.begin() + operand);
     CodeEnv *env = &this->heap[heap_idx];
     for (size_t i = 0; i < env->captured_vars.size(); ++i) {
       this->data_stack.push_back(env->captured_vars[i]);
@@ -327,7 +327,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     return setState(MachineState::HALT);
   }
   case (ISA::Operation::MKCLOSURE): {
-    // take as operand the closure label
+    // take as operand the code index which the code env lives in
     // capture everything in the current frame by taking the shared pointer and
     // adding it to the code env
     CodeEnv ret;
@@ -338,7 +338,6 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     ret.code_idx = operand;
     this->heap.push_back(std::move(ret));
     this->data_stack.push_back(make_cell(this->heap.size() - 1, true));
-    std::cout << this->heap.size() << std::endl;
     break;
   }
   case (ISA::Operation::MKGLOBAL): {
@@ -349,8 +348,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     const uint64_t operand = read_operand(this->program_mem, this->pc);
     auto glob_value = std::move(this->data_stack.back());
     this->data_stack.pop_back();
-    this->global_tbl[operand] =
-        make_cell(glob_value->value, glob_value->function);
+    this->global_tbl[operand] = glob_value;
     break;
   }
   case (ISA::Operation::LOADGLOBAL): {
@@ -374,13 +372,13 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     this->frame_base = this->data_stack.size() - operand;
     break;
   }
-  case (ISA::Operation::GET_LOCAL): {
+  case (ISA::Operation::GETLOCAL): {
     const uint64_t operand = read_operand(this->program_mem, this->pc);
     this->data_stack.push_back(
         clone_cell(*this->data_stack[this->frame_base + operand]));
     break;
   }
-  case (ISA::Operation::SET_LOCAL): {
+  case (ISA::Operation::SETLOCAL): {
     // Take as operand the index in the local frame of the variable we'd like to
     // mutate take the value off the top of the stack and mutate the value of
     // the cell at the target index but maintain the pointer, every environment
@@ -389,6 +387,12 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     auto value = std::move(data_stack.back());
     *data_stack[frame_base + operand] = *value;
     data_stack.pop_back();
+    break;
+  }
+  case (ISA::Operation::LEAVE): {
+    for (int i = this->frame_base; i < this->data_stack.size() - 1; i++) {
+      this->data_stack.erase(this->data_stack.begin() + i);
+    }
     break;
   }
   default:

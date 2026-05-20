@@ -14,7 +14,7 @@ size_t frame_base = 0; // added to Stack
 A single scalar on the VM — not a stack. It records the index into `data_stack`
 where the current function's local frame begins. `ENTER` sets it; no other
 instruction touches it. Because it is a scalar, a callee's `ENTER` overwrites
-the caller's value. This is intentional: `SET_LOCAL` is only valid in a
+the caller's value. This is intentional: `SETLOCAL` is only valid in a
 function's prologue, before any `CALL` is made.
 
 ---
@@ -48,7 +48,7 @@ binding. Track `frame_base` as a compile-time offset equal to
 
 ---
 
-## GET_LOCAL `<i>`
+## GETLOCAL `<i>`
 
 Operand kind: `U64`
 Operation kind: `CONTROL`
@@ -70,7 +70,7 @@ is only safe before the first `CALL` in a function body or after a re-issued
 
 ---
 
-## SET_LOCAL `<i>`
+## SETLOCAL `<i>`
 
 Operand kind: `U64`
 Operation kind: `CONTROL`
