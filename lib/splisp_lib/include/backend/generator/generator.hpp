@@ -9,8 +9,8 @@
 
 class Generator {
 public:
-  Generator(core::Program &program) : program(program) {};
-  void generate();
+  Generator(const core::Program &program) : program(program) {};
+  std::vector<ISA::Instruction> generate();
 
 private:
   friend struct GeneratorTestAccess;
@@ -34,3 +34,5 @@ private:
       {4, ISA::Operation::MOD},
   };
 };
+
+void print_bytecode(const std::vector<ISA::Instruction> &bytecode);

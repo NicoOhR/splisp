@@ -47,13 +47,15 @@ MachineState Stack::setState(MachineState next) {
 }
 
 MachineState Stack::run_program() {
-  this->machine_state = runInstruction();
-  while (this->machine_state == MachineState::OKAY) {
+  while (true) {
     const auto prev_pc = this->pc;
     this->machine_state = runInstruction();
-    if (this->pc == prev_pc) {
+    if (this->machine_state != MachineState::OKAY)
+      break;
+    if (this->pc == prev_pc)
       this->pc += 9;
-    }
+    if (this->pc >= this->program_mem.size())
+      return MachineState::HALT;
     continue;
   }
   return setState(this->machine_state);
@@ -283,10 +285,11 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // Closure handles are heap indexes. Calling one restores captured values so
     // the callee sees the same left-to-right stack order they had before
     // MKCLOSURE consumed them. The closure
-    const uint64_t operand = read_operand(this->program_mem, this->pc);
-    const auto heap_idx = this->data_stack[operand]->value;
-    this->return_stack.push(make_cell(this->pc, true));
-    data_stack.erase(this->data_stack.begin() + operand);
+    const uint64_t arg_count = read_operand(this->program_mem, this->pc);
+    const size_t handle_idx = this->data_stack.size() - arg_count - 1;
+    const auto heap_idx = this->data_stack[handle_idx]->value;
+    this->return_stack.push(make_cell(this->pc + 9, false));
+    data_stack.erase(this->data_stack.begin() + handle_idx);
     CodeEnv *env = &this->heap[heap_idx];
     for (size_t i = 0; i < env->captured_vars.size(); ++i) {
       this->data_stack.push_back(env->captured_vars[i]);
@@ -301,22 +304,17 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     break;
   }
   case (ISA::Operation::JMP): {
-    auto dest = std::move(this->data_stack.back());
-    this->data_stack.pop_back();
-    this->pc = dest->value;
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
+    this->pc = operand;
     break;
   }
   case (ISA::Operation::CJMP): {
     // (condition)
-    // (location)
-    // so for if, the location is evaluated first and then the condition, this
-    // works roughly as evaluating the AST from the leaves up
+    const uint64_t operand = read_operand(this->program_mem, this->pc);
     auto a = std::move(this->data_stack.back());
     this->data_stack.pop_back();
-    auto b = std::move(this->data_stack.back());
-    this->data_stack.pop_back();
     if (a->value != 0) {
-      this->pc = b->value;
+      this->pc = operand;
     }
     break;
   }

@@ -31,7 +31,7 @@ struct CodeEnv {
 
 class Stack {
 public:
-  Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data,
+  Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data = {0},
         bool dbg = false);
   // run instruction and handle state
   void advanceProgram();

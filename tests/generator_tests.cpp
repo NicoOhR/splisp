@@ -31,16 +31,6 @@ core::Expr var_expr(core::SymbolId id) {
   return core::Expr{.node = core::Var{id}};
 }
 
-void print_bytecode(const std::vector<ISA::Instruction> &bc) {
-  for (size_t i = 0; i < bc.size(); i++) {
-    const auto &spec = ISA::spec_list[static_cast<uint8_t>(bc[i].op)];
-    std::cerr << "  [" << i << "] " << spec.mnemonic;
-    if (bc[i].operand.has_value()) {
-      std::cerr << " " << bc[i].operand.value();
-    }
-    std::cerr << "\n";
-  }
-}
 
 bool has_op(const std::vector<ISA::Instruction> &bc, ISA::Operation op) {
   return std::any_of(bc.begin(), bc.end(),

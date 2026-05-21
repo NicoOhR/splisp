@@ -109,9 +109,8 @@ TEST(StackTests, DispatchControlWait) {
 }
 
 TEST(StackTests, DispatchControlJmp) {
-  auto stack = make_stack(ISA::Operation::JMP);
+  auto stack = make_stack(ISA::Operation::JMP, 7U);
   auto &data = StackTestAccess::data(stack);
-  data.push_back(std::make_shared<Cell>(Cell{7}));
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -120,10 +119,9 @@ TEST(StackTests, DispatchControlJmp) {
 }
 
 TEST(StackTests, DispatchControlCjmpTaken) {
-  auto stack = make_stack(ISA::Operation::CJMP);
+  auto stack = make_stack(ISA::Operation::CJMP, 9U);
   auto &data = StackTestAccess::data(stack);
-  data.push_back(std::make_shared<Cell>(Cell{9}));
-  data.push_back(std::make_shared<Cell>(Cell{1}));
+  data.push_back(std::make_shared<Cell>(Cell{1})); // condition = true
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -132,10 +130,9 @@ TEST(StackTests, DispatchControlCjmpTaken) {
 }
 
 TEST(StackTests, DispatchControlCjmpNotTaken) {
-  auto stack = make_stack(ISA::Operation::CJMP);
+  auto stack = make_stack(ISA::Operation::CJMP, 9U);
   auto &data = StackTestAccess::data(stack);
-  data.push_back(std::make_shared<Cell>(Cell{9}));
-  data.push_back(std::make_shared<Cell>(Cell{0}));
+  data.push_back(std::make_shared<Cell>(Cell{0})); // condition = false
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -190,7 +187,7 @@ TEST(StackTests, DispatchControlMkClosureCallRestoresSharedCapturesInOrder) {
   std::vector<ISA::Instruction> program{
       {ISA::Operation::ENTER, 2},
       {ISA::Operation::MKCLOSURE, 123},
-      {ISA::Operation::CALL, std::nullopt},
+      {ISA::Operation::CALL, 0},
   };
   Stack stack(std::move(program), std::vector<uint8_t>{});
   auto &data = StackTestAccess::data(stack);
@@ -346,7 +343,7 @@ TEST(StackTests, DispatchControlCallPopsHandleAndPushesReturnAddress) {
   std::vector<ISA::Instruction> program{
       {ISA::Operation::ENTER, 0},
       {ISA::Operation::MKCLOSURE, 77},
-      {ISA::Operation::CALL, std::nullopt},
+      {ISA::Operation::CALL, 0},
   };
   Stack stack(std::move(program), std::vector<uint8_t>{});
   auto &data = StackTestAccess::data(stack);
@@ -381,12 +378,9 @@ TEST(StackTests, DispatchControlCallRetRoundtrip) {
   //   byte 36: ENTER 0       ← body
   //   byte 45: RET
   std::vector<ISA::Instruction> program{
-      {ISA::Operation::ENTER, 0},
-      {ISA::Operation::MKCLOSURE, 36},
-      {ISA::Operation::CALL, std::nullopt},
-      {ISA::Operation::HALT, std::nullopt},
-      {ISA::Operation::ENTER, 0},
-      {ISA::Operation::RET, std::nullopt},
+      {ISA::Operation::ENTER, 0}, {ISA::Operation::MKCLOSURE, 36},
+      {ISA::Operation::CALL, 0},  {ISA::Operation::HALT, std::nullopt},
+      {ISA::Operation::ENTER, 0}, {ISA::Operation::RET, std::nullopt},
   };
   Stack stack(std::move(program), std::vector<uint8_t>{});
   auto &returns = StackTestAccess::returns(stack);

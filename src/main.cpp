@@ -1,3 +1,5 @@
+#include <backend/generator/generator.hpp>
+#include <backend/vm/stack.hpp>
 #include <frontend/core.hpp>
 #include <frontend/lexer.hpp>
 #include <frontend/parser.hpp>
@@ -6,11 +8,11 @@
 #include <string>
 
 int main() {
-  // std::string program = R"(
-  //   (letrec ((even? (lambda (n) (if n (odd? (- n 1)) 1)))
-  //            (odd?  (lambda (n) (if n (even? (- n 1)) 0))))
-  //     (even? 4))
-  // )";
+  std::string program = R"(
+    (letrec ((even? (lambda (n) (if n (odd? (- n 1)) 1)))
+             (odd?  (lambda (n) (if n (even? (- n 1)) 0))))
+      (even? 4))
+  )";
 
   // std::string program = R"(
   //   (define (add-then-double x y)
@@ -19,9 +21,9 @@ int main() {
   //   (add-then-double 3 4)
   // )";
 
-  std::string program = R"(
-    ((lambda (x) (* x x)) 5)
-  )";
+  // std::string program = R"(
+  //   ((lambda (x) (* x x)) 5)
+  // )";
 
   Lexer lex(program);
   Parser parser(std::move(lex));
@@ -37,5 +39,11 @@ int main() {
   core::Lowerer lowerer;
   const core::Program &program_ir = lowerer.lower(ast);
   core::print_program(program_ir);
+  Generator gen(program_ir);
+  auto bc = gen.generate();
+  std::cout << std::endl << "--+--" << std::endl;
+  print_bytecode(bc);
+  Stack vm(bc, {0}, true);
+  vm.run_program();
   return 0;
 }

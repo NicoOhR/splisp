@@ -22,16 +22,14 @@ struct StackTestAccess {
 constexpr size_t kInstrSize = 9;
 
 TEST(StackProgramTests, ConditionalJump) {
-  constexpr size_t kTrue = 8 * kInstrSize;
+  constexpr size_t kTrue = 6 * kInstrSize;
 
   const std::vector<ISA::Instruction> program{
-      {ISA::Operation::PUSH, 3},            // 3
-      {ISA::Operation::PUSH, 2},            // 2 3
-      {ISA::Operation::LT, std::nullopt},   // 1
-      {ISA::Operation::PUSH, kTrue},        // 72 1
-      {ISA::Operation::SWAP, std::nullopt}, // 1 72
-      {ISA::Operation::CJMP, std::nullopt}, // true
-      {ISA::Operation::PUSH, 0},            // 0
+      {ISA::Operation::PUSH, 3},           // 3
+      {ISA::Operation::PUSH, 2},           // 2 3
+      {ISA::Operation::LT, std::nullopt},  // 1
+      {ISA::Operation::CJMP, kTrue},       // jump if condition != 0
+      {ISA::Operation::PUSH, 0},           // 0 (false branch)
       {ISA::Operation::HALT, std::nullopt},
       // true:
       {ISA::Operation::PUSH, 1},
