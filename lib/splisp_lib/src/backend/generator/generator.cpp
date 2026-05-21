@@ -95,27 +95,38 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
   // JMP        #jump to MKCLOSURE
   // ENTER
   // emit<expr> #generate the body
-  // LEAVE; RET #function clean up
+  // NROT
+  // DROP
+  // RET
   // MKCLOSURE  #capture frame, pointing to ENTER
 
   // save a copy of the local symbols
   auto saved_locals = this->local_symbols;
+  auto n = lambda.formals.size() + saved_locals.size();
+
+  // add new formals to the local variables list
   for (size_t i = 0; i < lambda.formals.size(); i++) {
     const auto symbol_id = *lambda.formals.at(i);
     this->local_symbols[symbol_id] = i;
   }
+  // in the local symbols map, change the newly captured formals (now in
+  // local_symbols) indecies to fit with the inner layout
+  for (auto &[sym_id, outer_idx] : saved_locals)
+    this->local_symbols[sym_id] = lambda.formals.size() + outer_idx;
 
   const auto jmp_idx = this->bytecode.size();
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::JMP, .operand = std::nullopt});
   const auto enter_offset = this->bytecode.size() * 9;
-  this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::ENTER,
-                                            .operand = lambda.formals.size()});
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::ENTER, .operand = n});
   for (auto &&expr : lambda.body) {
     Generator::emit_expr(*expr);
   }
   this->bytecode.push_back(
-      Instruction{.op = ISA::Operation::LEAVE, .operand = std::nullopt});
+      ISA::Instruction{.op = ISA::Operation::NROT, .operand = n + 1});
+  this->bytecode.push_back(
+      ISA::Instruction{.op = ISA::Operation::DROP, .operand = n});
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::RET, .operand = std::nullopt});
   const auto mk_offset = this->bytecode.size();

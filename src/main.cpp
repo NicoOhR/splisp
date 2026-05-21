@@ -9,7 +9,11 @@
 
 int main() {
   std::string program =
-      R"((letrec ((count (lambda (n) (if n (count (- n 1)) 0)))) (count 3)))";
+      R"(
+    (letrec ((even? (lambda (n) (if n (odd?  (- n 1)) 1)))
+             (odd?  (lambda (n) (if n (even? (- n 1)) 0))))
+      (even? 9))
+  )";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

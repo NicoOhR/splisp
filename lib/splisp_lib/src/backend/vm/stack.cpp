@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <list>
 #include <memory>
 #include <stdexcept>
 
@@ -289,7 +288,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
     data_stack.push_back(std::make_shared<Cell>(
-        Cell{static_cast<uint64_t>(a->value < b->value ? 1 : 0)}));
+        Cell{static_cast<int64_t>(a->value < b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::LE): {
@@ -298,7 +297,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
     data_stack.push_back(std::make_shared<Cell>(
-        Cell{static_cast<uint64_t>(a->value <= b->value ? 1 : 0)}));
+        Cell{static_cast<int64_t>(a->value <= b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::EQ): {
@@ -307,7 +306,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
     data_stack.push_back(std::make_shared<Cell>(
-        Cell{static_cast<uint64_t>(a->value == b->value ? 1 : 0)}));
+        Cell{static_cast<int64_t>(a->value == b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::GE): {
@@ -316,7 +315,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
     data_stack.push_back(std::make_shared<Cell>(
-        Cell{static_cast<uint64_t>(a->value >= b->value ? 1 : 0)}));
+        Cell{static_cast<int64_t>(a->value >= b->value ? 1 : 0)}));
     break;
   }
   case (ISA::Operation::GT): {
@@ -325,7 +324,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
     data_stack.push_back(std::make_shared<Cell>(
-        Cell{static_cast<uint64_t>(a->value > b->value ? 1 : 0)}));
+        Cell{static_cast<int64_t>(a->value > b->value ? 1 : 0)}));
     break;
   }
   default:
@@ -338,7 +337,9 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   const uint64_t operand = read_operand(this->program_mem, this->pc);
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::DROP): {
-    data_stack.pop_back();
+    for (uint64_t i = 0; i < operand; i++) {
+      data_stack.pop_back();
+    }
     break;
   }
   case (ISA::Operation::DUP): {
@@ -483,12 +484,6 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     auto value = std::move(data_stack.back());
     *data_stack.at(frame_base + operand) = *value;
     data_stack.pop_back();
-    break;
-  }
-  case (ISA::Operation::LEAVE): {
-    for (int i = this->frame_base; i < this->data_stack.size() - 1; i++) {
-      this->data_stack.erase(this->data_stack.begin() + i);
-    }
     break;
   }
   default:
