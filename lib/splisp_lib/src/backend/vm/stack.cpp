@@ -400,6 +400,8 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     auto dest = std::move(this->return_stack.top());
     this->return_stack.pop();
     this->pc = dest->value;
+    this->frame_base = this->frame_base_stack.top();
+    this->frame_base_stack.pop();
     break;
   }
   case (ISA::Operation::JMP): {
@@ -466,6 +468,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
   }
   case (ISA::Operation::ENTER): {
     const uint64_t operand = read_operand(this->program_mem, this->pc);
+    this->frame_base_stack.push(this->frame_base);
     this->frame_base = this->data_stack.size() - operand;
     break;
   }

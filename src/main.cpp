@@ -10,9 +10,13 @@
 int main() {
   std::string program =
       R"(
-    (letrec ((even? (lambda (n) (if n (odd?  (- n 1)) 1)))
-             (odd?  (lambda (n) (if n (even? (- n 1)) 0))))
-      (even? 9))
+          (letrec ((fib (lambda (n)
+                          (if n
+                              (if (- n 1)
+                                  (+ (fib (- n 1)) (fib (- n 2)))
+                                  1)
+                              0))))
+            (fib 10))
   )";
   Lexer lex(program);
   Parser parser(std::move(lex));

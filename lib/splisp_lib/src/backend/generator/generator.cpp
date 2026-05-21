@@ -100,7 +100,8 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
   // RET
   // MKCLOSURE  #capture frame, pointing to ENTER
 
-  // save a copy of the local symbols
+  // save a copy of the local symbols to be restored after this level is
+  // finished generating
   auto saved_locals = this->local_symbols;
   auto n = lambda.formals.size() + saved_locals.size();
 
@@ -110,7 +111,7 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
     this->local_symbols[symbol_id] = i;
   }
   // in the local symbols map, change the newly captured formals (now in
-  // local_symbols) indecies to fit with the inner layout
+  // local_symbols) indecies to match with the inner layout
   for (auto &[sym_id, outer_idx] : saved_locals)
     this->local_symbols[sym_id] = lambda.formals.size() + outer_idx;
 
@@ -123,6 +124,8 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
   for (auto &&expr : lambda.body) {
     Generator::emit_expr(*expr);
   }
+  // rotate the result down to the bottom of the frame and drop the scratch
+  // variables that it calculates
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::NROT, .operand = n + 1});
   this->bytecode.push_back(

@@ -19,6 +19,7 @@ private:
   // symbol name -> index in the formals list/code env
   std::map<core::SymbolId, size_t> local_symbols;
   std::vector<ISA::Instruction> bytecode;
+  size_t depth = 0;
   void emit_top(const core::Top &top);
   void emit_expr(const core::Expr &expr);
   void emit_top_define(const core::Define &def);
