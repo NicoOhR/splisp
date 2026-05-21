@@ -52,7 +52,7 @@ TEST(StackTests, DispatchArithmeticAdd) {
 }
 
 TEST(StackTests, DispatchArithmeticOpsCoarse) {
-  auto run_binary = [](ISA::Operation op, uint64_t b, uint64_t a) -> uint64_t {
+  auto run_binary = [](ISA::Operation op, int64_t b, int64_t a) -> int64_t {
     auto stack = make_stack(op);
     auto &data = StackTestAccess::data(stack);
     data.push_back(std::make_shared<Cell>(Cell{b}));
@@ -62,11 +62,11 @@ TEST(StackTests, DispatchArithmeticOpsCoarse) {
     return data.back()->value;
   };
 
-  EXPECT_EQ(run_binary(ISA::Operation::ADD, 2, 3), 5U);
-  EXPECT_EQ(run_binary(ISA::Operation::SUB, 3, 10), 7U);
-  EXPECT_EQ(run_binary(ISA::Operation::MUL, 7, 6), 42U);
-  EXPECT_EQ(run_binary(ISA::Operation::DIV, 4, 20), 5U);
-  EXPECT_EQ(run_binary(ISA::Operation::MOD, 7, 20), 6U);
+  EXPECT_EQ(run_binary(ISA::Operation::ADD, 3, 2), 5U);
+  EXPECT_EQ(run_binary(ISA::Operation::SUB, 10, 3), 7U);
+  EXPECT_EQ(run_binary(ISA::Operation::MUL, 6, 7), 42U);
+  EXPECT_EQ(run_binary(ISA::Operation::DIV, 20, 4), 5U);
+  EXPECT_EQ(run_binary(ISA::Operation::MOD, 20, 7), 6U);
 }
 
 TEST(StackTests, DispatchLogicLt) {
@@ -355,26 +355,26 @@ TEST(StackTests, DispatchControlCallPopsHandleAndPushesReturnAddress) {
   ASSERT_EQ(data.size(), 1U);
   EXPECT_TRUE(data.back()->function);
 
-  const size_t call_pc = StackTestAccess::pc(stack) + kInstrSize;
   StackTestAccess::pc(stack) += kInstrSize;
-  auto state = StackTestAccess::runInstruction(stack); // CALL
+  const size_t expected_ret = StackTestAccess::pc(stack) + kInstrSize; // pc+9
+  auto state = StackTestAccess::runInstruction(stack);                 // CALL
 
   EXPECT_EQ(state, MachineState::OKAY);
   EXPECT_TRUE(data.empty()); // handle was popped, no captures to restore
   ASSERT_EQ(returns.size(), 1U);
-  EXPECT_EQ(returns.top()->value, call_pc); // return address is the CALL site
+  EXPECT_EQ(returns.top()->value,
+            expected_ret); // return address is instruction after CALL
 }
 
 TEST(StackTests, DispatchControlCallRetRoundtrip) {
-  // CALL saves its own pc on the return stack; RET restores it.
-  // run_program then advances +9 past CALL, but here we just verify the raw
-  // return address is the CALL instruction's byte offset.
+  // CALL saves pc+9 (the instruction after CALL) on the return stack.
+  // RET restores directly to that address, no run_program advance needed.
   //
   // Layout (each instruction = 9 bytes):
   //   byte  0: ENTER 0
   //   byte  9: MKCLOSURE 36
-  //   byte 18: CALL          ← return address saved here
-  //   byte 27: HALT
+  //   byte 18: CALL          ← saves 27 (= 18+9) to return stack
+  //   byte 27: HALT          ← return address lands here
   //   byte 36: ENTER 0       ← body
   //   byte 45: RET
   std::vector<ISA::Instruction> program{
@@ -393,13 +393,15 @@ TEST(StackTests, DispatchControlCallRetRoundtrip) {
   StackTestAccess::runInstruction(stack); // CALL at byte 18 → pc jumps to 36
   EXPECT_EQ(StackTestAccess::pc(stack), 36U);
   ASSERT_EQ(returns.size(), 1U);
-  EXPECT_EQ(returns.top()->value, 18U); // return address = CALL's own pc
+  EXPECT_EQ(returns.top()->value,
+            27U); // return address = instruction after CALL
 
   StackTestAccess::runInstruction(stack); // ENTER 0 at byte 36
   StackTestAccess::pc(stack) += kInstrSize;
   auto ret_state = StackTestAccess::runInstruction(stack); // RET at byte 45
   EXPECT_EQ(ret_state, MachineState::OKAY);
-  EXPECT_EQ(StackTestAccess::pc(stack), 18U); // restored to CALL's pc
+  EXPECT_EQ(StackTestAccess::pc(stack),
+            27U); // restored to instruction after CALL
   EXPECT_EQ(returns.size(), 0U);
 }
 

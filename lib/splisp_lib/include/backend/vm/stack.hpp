@@ -20,7 +20,7 @@ enum MachineState {
 };
 
 struct Cell {
-  uint64_t value;
+  int64_t value;
   bool function = 0;
 };
 
@@ -36,6 +36,7 @@ public:
   // run instruction and handle state
   void advanceProgram();
   MachineState run_program();
+  MachineState run_program_dbg(const std::vector<ISA::Instruction> &source);
 
 private:
   friend struct StackTestAccess;

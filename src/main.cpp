@@ -8,23 +8,8 @@
 #include <string>
 
 int main() {
-  std::string program = R"(
-    (letrec ((even? (lambda (n) (if n (odd? (- n 1)) 1)))
-             (odd?  (lambda (n) (if n (even? (- n 1)) 0))))
-      (even? 4))
-  )";
-
-  // std::string program = R"(
-  //   (define (add-then-double x y)
-  //     (letrec ((sum (+ x y)))
-  //       (* sum 2)))
-  //   (add-then-double 3 4)
-  // )";
-
-  // std::string program = R"(
-  //   ((lambda (x) (* x x)) 5)
-  // )";
-
+  std::string program =
+      R"((letrec ((count (lambda (n) (if n (count (- n 1)) 0)))) (count 3)))";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();
@@ -45,5 +30,6 @@ int main() {
   print_bytecode(bc);
   Stack vm(bc, {0}, true);
   vm.run_program();
+  // vm.run_program_dbg(bc);
   return 0;
 }

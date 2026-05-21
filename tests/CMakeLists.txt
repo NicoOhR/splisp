@@ -21,6 +21,7 @@ if(SPLISP_BUILD_VM)
   list(APPEND SPLISP_TEST_SOURCES
     vm_program_tests.cpp
     vm_stack_tests.cpp
+    pipeline_tests.cpp
   )
 endif()
 

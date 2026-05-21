@@ -27,6 +27,7 @@ private:
   void emit_apply(const core::Apply &application);
   void emit_var(const core::Var &variable);
   void emit_const(const core::Const &const_var);
+  void emit_set(const core::Set &set_op);
 
   const std::map<core::SymbolId, ISA::Operation> builtins = {
       {0, ISA::Operation::ADD}, {1, ISA::Operation::SUB},

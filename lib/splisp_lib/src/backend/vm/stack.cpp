@@ -10,7 +10,7 @@
 
 namespace {
 
-std::shared_ptr<Cell> make_cell(uint64_t value, bool function = false) {
+std::shared_ptr<Cell> make_cell(int64_t value, bool function = false) {
   return std::make_shared<Cell>(Cell{value, function});
 }
 
@@ -46,10 +46,104 @@ MachineState Stack::setState(MachineState next) {
   return next;
 }
 
+MachineState
+Stack::run_program_dbg(const std::vector<ISA::Instruction> &source) {
+  auto print_state = [&]() {
+    // program listing with current instruction marked
+    std::cerr << "── program ──\n";
+    for (size_t i = 0; i < source.size(); i++) {
+      const auto &spec = ISA::spec_list[static_cast<uint8_t>(source[i].op)];
+      bool current = (i * 9 == this->pc);
+      std::cerr << (current ? " * " : "   ") << "[" << i << "] "
+                << spec.mnemonic;
+      if (source[i].operand.has_value())
+        std::cerr << " " << source[i].operand.value();
+      std::cerr << "\n";
+    }
+    // data stack
+    std::cerr << "── data stack (bottom→top) ──\n";
+    for (size_t i = 0; i < this->data_stack.size(); i++) {
+      std::cerr << "  [" << i << "] " << this->data_stack[i]->value
+                << (this->data_stack[i]->function ? "f" : "")
+                << (i == this->frame_base ? "  ← frame_base" : "") << "\n";
+    }
+    // return stack
+    {
+      std::cerr << "── return stack (top first) ──\n";
+      auto tmp = this->return_stack;
+      while (!tmp.empty()) {
+        std::cerr << "  " << tmp.top()->value << "\n";
+        tmp.pop();
+      }
+    }
+    // heap
+    std::cerr << "── heap ──\n";
+    for (size_t i = 0; i < this->heap.size(); i++) {
+      std::cerr << "  [" << i << "] code_idx=" << this->heap[i].code_idx
+                << " captures=[";
+      for (size_t j = 0; j < this->heap[i].captured_vars.size(); j++) {
+        if (j)
+          std::cerr << ", ";
+        std::cerr << this->heap[i].captured_vars[j]->value;
+      }
+      std::cerr << "]\n";
+    }
+    // globals
+    std::cerr << "── globals ──\n";
+    for (auto &[id, cell] : this->global_tbl) {
+      std::cerr << "  [" << id << "] " << cell->value
+                << (cell->function ? "f" : "") << "\n";
+    }
+    std::cerr << "────────────  pc=" << this->pc
+              << "  frame_base=" << this->frame_base << "\n";
+  };
+
+  while (true) {
+    print_state();
+    std::cerr << "[enter to step, q+enter to quit] ";
+    std::string line;
+    std::getline(std::cin, line);
+    if (line == "q")
+      break;
+
+    const auto prev_pc = this->pc;
+    try {
+      this->machine_state = runInstruction();
+    } catch (const std::exception &e) {
+      const uint8_t op = this->program_mem[prev_pc];
+      std::cerr << "runtime error at pc=" << prev_pc
+                << " op=" << ISA::spec_list[op].mnemonic << ": " << e.what()
+                << "\n";
+      return setState(MachineState::INVALID_OP);
+    }
+    if (this->machine_state != MachineState::OKAY)
+      break;
+    if (this->pc == prev_pc)
+      this->pc += 9;
+    if (this->pc >= this->program_mem.size()) {
+      print_state();
+      return setState(MachineState::HALT);
+    }
+  }
+  print_state();
+  return setState(this->machine_state);
+}
+
 MachineState Stack::run_program() {
   while (true) {
     const auto prev_pc = this->pc;
-    this->machine_state = runInstruction();
+    try {
+      this->machine_state = runInstruction();
+    } catch (const std::exception &e) {
+      const uint8_t op = this->program_mem[prev_pc];
+      const auto &spec = ISA::spec_list[op];
+      std::cerr << "runtime error at pc=" << prev_pc << " op=" << spec.mnemonic
+                << ": " << e.what() << "\n";
+      std::cerr << "  stack depth=" << this->data_stack.size()
+                << " return_stack depth=" << this->return_stack.size()
+                << " heap size=" << this->heap.size() << "\n";
+      return setState(MachineState::INVALID_OP);
+    }
     if (this->machine_state != MachineState::OKAY)
       break;
     if (this->pc == prev_pc)
@@ -69,8 +163,8 @@ MachineState Stack::runInstruction() {
     for (size_t i = 0; i < this->data_stack.size(); ++i) {
       if (i)
         std::cerr << ", ";
-      std::cerr << this->data_stack[i]->value;
-      if (this->data_stack[i]->function)
+      std::cerr << this->data_stack.at(i)->value;
+      if (this->data_stack.at(i)->function)
         std::cerr << "f";
     }
     std::cerr << "]\n";
@@ -100,6 +194,9 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
+    if (a->function || b->function) {
+      return MachineState::INVALID_ADD;
+    }
     data_stack.push_back(std::make_shared<Cell>(Cell{a->value + b->value}));
     break;
   }
@@ -108,8 +205,11 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
+    if (a->function || b->function) {
+      return MachineState::INVALID_ADD;
+    }
     data_stack.push_back(std::make_shared<Cell>(
-        Cell{.value = a->value - b->value, .function = false}));
+        Cell{.value = b->value - a->value, .function = false}));
     break;
   }
   case (ISA::Operation::MUL): {
@@ -117,6 +217,9 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
+    if (a->function || b->function) {
+      return MachineState::INVALID_ADD;
+    }
     data_stack.push_back(std::make_shared<Cell>(Cell{a->value * b->value}));
     break;
   }
@@ -125,7 +228,10 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
-    data_stack.push_back(std::make_shared<Cell>(Cell{a->value / b->value}));
+    if (a->function || b->function) {
+      return MachineState::INVALID_ADD;
+    }
+    data_stack.push_back(std::make_shared<Cell>(Cell{b->value / a->value}));
     break;
   }
   case (ISA::Operation::MOD): {
@@ -133,7 +239,10 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
     data_stack.pop_back();
     auto b = std::move(data_stack.back());
     data_stack.pop_back();
-    data_stack.push_back(std::make_shared<Cell>(Cell{a->value % b->value}));
+    if (a->function || b->function) {
+      return MachineState::INVALID_ADD;
+    }
+    data_stack.push_back(std::make_shared<Cell>(Cell{b->value % a->value}));
     break;
   }
   case (ISA::Operation::INC): {
@@ -246,22 +355,9 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
     break;
   }
   case (ISA::Operation::NROT): {
-    // stupid implementations are stupid
-    auto tmp = std::list<std::shared_ptr<Cell>>();
-    // append from stack in decending order
-    for (auto i = 0; i < operand; i++) {
-      tmp.push_front(std::move(data_stack.back()));
-      data_stack.pop_back();
-    }
-    // insert the first element (a) into the bottom of the N operations
-    data_stack.push_back(std::move(tmp.front()));
-    tmp.pop_front();
-    // iterate backwards through the list mainting the rest of the original
-    // order
-    for (auto i = tmp.size(); i > 0; i--) {
-      data_stack.push_back(std::move(tmp.back()));
-      tmp.pop_back();
-    }
+    auto a = std::move(data_stack.back());
+    data_stack.pop_back();
+    data_stack.insert(data_stack.end() - operand + 1, std::move(a));
     break;
   }
   case (ISA::Operation::PUSH): {
@@ -271,7 +367,7 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   case (ISA::Operation::PICK): {
     // PICK n: push a copy of the item at depth n (0 = top).
     data_stack.push_back(
-        clone_cell(*data_stack[data_stack.size() - 1 - operand]));
+        clone_cell(*data_stack.at(data_stack.size() - 1 - operand)));
     break;
   }
   default:
@@ -287,10 +383,10 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // MKCLOSURE consumed them. The closure
     const uint64_t arg_count = read_operand(this->program_mem, this->pc);
     const size_t handle_idx = this->data_stack.size() - arg_count - 1;
-    const auto heap_idx = this->data_stack[handle_idx]->value;
+    const auto heap_idx = this->data_stack.at(handle_idx)->value;
     this->return_stack.push(make_cell(this->pc + 9, false));
     data_stack.erase(this->data_stack.begin() + handle_idx);
-    CodeEnv *env = &this->heap[heap_idx];
+    CodeEnv *env = &this->heap.at(heap_idx);
     for (size_t i = 0; i < env->captured_vars.size(); ++i) {
       this->data_stack.push_back(env->captured_vars[i]);
     }
@@ -298,6 +394,8 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     break;
   }
   case (ISA::Operation::RET): {
+    if (this->return_stack.empty())
+      throw std::runtime_error("return stack underflow");
     auto dest = std::move(this->return_stack.top());
     this->return_stack.pop();
     this->pc = dest->value;
@@ -331,7 +429,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     CodeEnv ret;
     const uint64_t operand = read_operand(this->program_mem, this->pc);
     for (size_t i = this->frame_base; i < this->data_stack.size(); i++) {
-      ret.captured_vars.push_back(this->data_stack[i]);
+      ret.captured_vars.push_back(this->data_stack.at(i));
     }
     ret.code_idx = operand;
     this->heap.push_back(std::move(ret));
@@ -373,7 +471,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
   case (ISA::Operation::GETLOCAL): {
     const uint64_t operand = read_operand(this->program_mem, this->pc);
     this->data_stack.push_back(
-        clone_cell(*this->data_stack[this->frame_base + operand]));
+        clone_cell(*this->data_stack.at(this->frame_base + operand)));
     break;
   }
   case (ISA::Operation::SETLOCAL): {
@@ -383,7 +481,7 @@ MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
     // which sees this value will have the mutated value in it
     const uint64_t operand = read_operand(this->program_mem, this->pc);
     auto value = std::move(data_stack.back());
-    *data_stack[frame_base + operand] = *value;
+    *data_stack.at(frame_base + operand) = *value;
     data_stack.pop_back();
     break;
   }

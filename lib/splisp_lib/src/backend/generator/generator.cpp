@@ -67,6 +67,13 @@ void Generator::emit_expr(const core::Expr &expr) {
         if constexpr (std::is_same_v<T, core::Var>) {
           Generator::emit_var(p);
         }
+        if constexpr (std::is_same_v<T, core::Set>) {
+          Generator::emit_set(p);
+        }
+        if constexpr (std::is_same_v<T, core::Undef>) {
+          this->bytecode.push_back(
+              ISA::Instruction{.op = ISA::Operation::PUSH, .operand = 0});
+        }
       },
       expr.node);
 }
@@ -82,8 +89,6 @@ void Generator::emit_top_define(const core::Define &def) {
   this->global_symbols.push_back(def.name);
   this->bytecode.push_back(
       ISA::Instruction{.op = ISA::Operation::MKGLOBAL, .operand = def.name});
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::RET, .operand = std::nullopt});
 };
 
 void Generator::emit_lambda(const core::Lambda &lambda) {
@@ -93,6 +98,8 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
   // LEAVE; RET #function clean up
   // MKCLOSURE  #capture frame, pointing to ENTER
 
+  // save a copy of the local symbols
+  auto saved_locals = this->local_symbols;
   for (size_t i = 0; i < lambda.formals.size(); i++) {
     const auto symbol_id = *lambda.formals.at(i);
     this->local_symbols[symbol_id] = i;
@@ -115,19 +122,20 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
   this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::MKCLOSURE,
                                             .operand = enter_offset});
   this->bytecode[jmp_idx].operand = mk_offset * 9;
+  // restore for when called a level up.
+  this->local_symbols = saved_locals;
 };
 void Generator::emit_apply(const core::Apply &application) {
   if (auto *var = std::get_if<core::Var>(&application.callee->node)) {
-    for (auto &&arg : application.args) {
-      emit_expr(*arg);
+    auto it = this->builtins.find(var->id);
+    if (it != this->builtins.end()) {
+      for (auto &&arg : application.args)
+        emit_expr(*arg);
+      this->bytecode.push_back(
+          ISA::Instruction{.op = it->second, .operand = std::nullopt});
+      return;
     }
-    if (var->id <= 4) {
-      this->bytecode.push_back(ISA::Instruction{
-          .op = this->builtins.at(var->id), .operand = std::nullopt});
-    } else {
-      emit_var(*var);
-    }
-    return;
+    emit_var(*var); // push handle, fall through to args + CALL
   } else if (auto *lam = std::get_if<core::Lambda>(&application.callee->node)) {
     emit_lambda(*lam);
   } else if (auto *app = std::get_if<core::Apply>(&application.callee->node)) {
@@ -135,16 +143,15 @@ void Generator::emit_apply(const core::Apply &application) {
   } else {
     emit_expr(*application.callee);
   }
-  for (auto &&arg : application.args) {
+  for (auto &&arg : application.args)
     emit_expr(*arg);
-  }
   this->bytecode.push_back(ISA::Instruction{
       .op = ISA::Operation::CALL, .operand = application.args.size()});
 };
 void print_bytecode(const std::vector<ISA::Instruction> &bytecode) {
   for (size_t i = 0; i < bytecode.size(); i++) {
     const auto &spec = ISA::spec_list[static_cast<uint8_t>(bytecode[i].op)];
-    std::cerr << "[" << i << "] " << spec.mnemonic;
+    std::cerr << "[" << i * 9 << "] " << spec.mnemonic;
     if (bytecode[i].operand.has_value()) {
       std::cerr << " " << bytecode[i].operand.value();
     }
@@ -166,3 +173,18 @@ void Generator::emit_var(const core::Var &variable) {
     std::cerr << "Variable not found" << std::endl;
   }
 };
+
+void Generator::emit_set(const core::Set &set_op) {
+  emit_expr(*set_op.rhs);
+  if (this->local_symbols.find(set_op.name) != this->local_symbols.end()) {
+    this->bytecode.push_back(
+        ISA::Instruction{.op = ISA::Operation::SETLOCAL,
+                         .operand = this->local_symbols.at(set_op.name)});
+  } else if (std::find(this->global_symbols.begin(), this->global_symbols.end(),
+                       set_op.name) != this->global_symbols.end()) {
+    this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::MUTGLOBAL,
+                                              .operand = set_op.name});
+  } else {
+    std::cerr << "Variable not found for set!" << std::endl;
+  }
+}
