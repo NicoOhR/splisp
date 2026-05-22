@@ -170,23 +170,23 @@ MachineState Stack::runInstruction() {
   }
   switch (spec.operation) {
   case (ISA::OperationKind::ARITHMETIC): {
-    return setState(this->handleArithmetic(curr, spec));
+    return setState(this->handleArithmetic(curr));
   }
   case (ISA::OperationKind::CONTROL): {
-    return setState(this->handleControl(curr, spec));
+    return setState(this->handleControl(curr));
   }
   case (ISA::OperationKind::TRANSFER): {
-    return setState(this->handleTransfer(curr, spec));
+    return setState(this->handleTransfer(curr));
   }
   case (ISA::OperationKind::LOGIC): {
-    return setState(this->handleLogic(curr, spec));
+    return setState(this->handleLogic(curr));
   }
   default:
     return setState(MachineState::INVALID_OP);
   }
 };
 
-MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
+MachineState Stack::handleArithmetic(uint8_t op) {
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::ADD): {
     auto a = std::move(data_stack.back());
@@ -280,7 +280,7 @@ MachineState Stack::handleArithmetic(uint8_t op, ISA::Spec spec) {
   }
   return setState(MachineState::OKAY);
 };
-MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
+MachineState Stack::handleLogic(uint8_t op) {
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::LT): {
     auto a = std::move(data_stack.back());
@@ -333,7 +333,7 @@ MachineState Stack::handleLogic(uint8_t op, ISA::Spec spec) {
   }
   return setState(MachineState::OKAY);
 };
-MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
+MachineState Stack::handleTransfer(uint8_t op) {
   const uint64_t operand = read_operand(this->program_mem, this->pc);
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::DROP): {
@@ -376,7 +376,7 @@ MachineState Stack::handleTransfer(uint8_t op, ISA::Spec spec) {
   }
   return setState(MachineState::OKAY);
 }
-MachineState Stack::handleControl(uint8_t op, ISA::Spec) {
+MachineState Stack::handleControl(uint8_t op) {
   switch (static_cast<ISA::Operation>(op)) {
   case (ISA::Operation::CALL): {
     // Closure handles are heap indexes. Calling one restores captured values so

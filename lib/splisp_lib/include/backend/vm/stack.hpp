@@ -47,10 +47,10 @@ private:
 
   // I am almost certain there is a better way to propagate
   // the machine error that does not throw a program exception
-  MachineState handleArithmetic(uint8_t op, ISA::Spec spec);
-  MachineState handleLogic(uint8_t op, ISA::Spec spec);
-  MachineState handleTransfer(uint8_t op, ISA::Spec spec);
-  MachineState handleControl(uint8_t op, ISA::Spec spec);
+  MachineState handleArithmetic(uint8_t op);
+  MachineState handleLogic(uint8_t op);
+  MachineState handleTransfer(uint8_t op);
+  MachineState handleControl(uint8_t op);
 
   size_t pc = 0;
   MachineState machine_state = MachineState::OKAY;
