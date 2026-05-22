@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <backend/generator/generator.hpp>
 #include <backend/isa/isa.hpp>
+#include <cstdint>
 #include <exception>
 #include <frontend/ast.hpp>
 #include <frontend/core.hpp>
@@ -12,13 +13,28 @@
 
 using ISA::Instruction;
 
+void print_bytecode(const std::vector<ISA::Instruction> &bytecode) {
+  for (size_t i = 0; i < bytecode.size(); i++) {
+    const auto &spec = ISA::spec_list[static_cast<uint8_t>(bytecode[i].op)];
+    std::cerr << "[" << i * 9 << "] " << spec.mnemonic;
+    if (bytecode[i].operand.has_value()) {
+      std::cerr << " " << bytecode[i].operand.value();
+    }
+    std::cerr << "\n";
+  }
+}
+
 std::vector<ISA::Instruction> Generator::generate() {
   for (auto &top : this->program) {
     emit_top(top);
   }
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::HALT, .operand = std::nullopt});
+  add_instruction(ISA::Operation::HALT, std::nullopt);
   return this->bytecode;
+}
+
+void Generator::add_instruction(ISA::Operation op,
+                                std::optional<uint64_t> operand) {
+  this->bytecode.push_back(ISA::Instruction{op, operand});
 }
 
 void Generator::emit_top(const core::Top &top) {
@@ -37,12 +53,10 @@ void Generator::emit_top(const core::Top &top) {
 void Generator::emit_cond(const core::Cond &cond) {
   emit_expr(*cond.condition);
   size_t cjmp_idx = this->bytecode.size();
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::CJMP, .operand = std::nullopt});
+  add_instruction(ISA::Operation::CJMP, std::nullopt);
   emit_expr(*cond.otherwise);
   size_t jmp_idx = this->bytecode.size();
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::JMP, .operand = std::nullopt});
+  add_instruction(ISA::Operation::JMP, std::nullopt);
   this->bytecode[cjmp_idx].operand = this->bytecode.size() * 9;
   emit_expr(*cond.then);
   this->bytecode[jmp_idx].operand = this->bytecode.size() * 9;
@@ -71,24 +85,21 @@ void Generator::emit_expr(const core::Expr &expr) {
           Generator::emit_set(p);
         }
         if constexpr (std::is_same_v<T, core::Undef>) {
-          this->bytecode.push_back(
-              ISA::Instruction{.op = ISA::Operation::PUSH, .operand = 0});
+          add_instruction(ISA::Operation::PUSH, 0);
         }
       },
       expr.node);
 }
 
 void Generator::emit_const(const core::Const &const_var) {
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::PUSH, .operand = const_var.value});
+  add_instruction(ISA::Operation::PUSH, const_var.value);
 };
 
 void Generator::emit_top_define(const core::Define &def) {
   // function which defines top level (global) defintion
   Generator::emit_expr(*def.rhs);
   this->global_symbols.push_back(def.name);
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::MKGLOBAL, .operand = def.name});
+  add_instruction(ISA::Operation::MKGLOBAL, def.name);
 };
 
 void Generator::emit_lambda(const core::Lambda &lambda) {
@@ -116,25 +127,19 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
     this->local_symbols[sym_id] = lambda.formals.size() + outer_idx;
 
   const auto jmp_idx = this->bytecode.size();
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::JMP, .operand = std::nullopt});
+  add_instruction(ISA::Operation::JMP, std::nullopt);
   const auto enter_offset = this->bytecode.size() * 9;
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::ENTER, .operand = n});
+  add_instruction(ISA::Operation::ENTER, n);
   for (auto &&expr : lambda.body) {
     Generator::emit_expr(*expr);
   }
   // rotate the result down to the bottom of the frame and drop the scratch
   // variables that it calculates
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::NROT, .operand = n + 1});
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::DROP, .operand = n});
-  this->bytecode.push_back(
-      ISA::Instruction{.op = ISA::Operation::RET, .operand = std::nullopt});
+  add_instruction(ISA::Operation::NROT, n + 1);
+  add_instruction(ISA::Operation::DROP, n);
+  add_instruction(ISA::Operation::RET, std::nullopt);
   const auto mk_offset = this->bytecode.size();
-  this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::MKCLOSURE,
-                                            .operand = enter_offset});
+  add_instruction(ISA::Operation::MKCLOSURE, enter_offset);
   this->bytecode[jmp_idx].operand = mk_offset * 9;
   // restore for when called a level up.
   this->local_symbols = saved_locals;
@@ -145,8 +150,7 @@ void Generator::emit_apply(const core::Apply &application) {
     if (it != this->builtins.end()) {
       for (auto &&arg : application.args)
         emit_expr(*arg);
-      this->bytecode.push_back(
-          ISA::Instruction{.op = it->second, .operand = std::nullopt});
+      add_instruction(it->second, std::nullopt);
       return;
     }
     emit_var(*var); // push handle, fall through to args + CALL
@@ -159,30 +163,15 @@ void Generator::emit_apply(const core::Apply &application) {
   }
   for (auto &&arg : application.args)
     emit_expr(*arg);
-  this->bytecode.push_back(ISA::Instruction{
-      .op = ISA::Operation::CALL, .operand = application.args.size()});
+  add_instruction(ISA::Operation::CALL, application.args.size());
 };
-void print_bytecode(const std::vector<ISA::Instruction> &bytecode) {
-  for (size_t i = 0; i < bytecode.size(); i++) {
-    const auto &spec = ISA::spec_list[static_cast<uint8_t>(bytecode[i].op)];
-    std::cerr << "[" << i * 9 << "] " << spec.mnemonic;
-    if (bytecode[i].operand.has_value()) {
-      std::cerr << " " << bytecode[i].operand.value();
-    }
-    std::cerr << "\n";
-  }
-}
-
 void Generator::emit_var(const core::Var &variable) {
   if (std::find(this->global_symbols.begin(), this->global_symbols.end(),
                 variable.id) != this->global_symbols.end()) {
-    this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::LOADGLOBAL,
-                                              .operand = variable.id});
+    add_instruction(ISA::Operation::LOADGLOBAL, variable.id);
   } else if (this->local_symbols.find(variable.id) !=
              this->local_symbols.end()) {
-    this->bytecode.push_back(
-        ISA::Instruction{.op = ISA::Operation::GETLOCAL,
-                         .operand = this->local_symbols[variable.id]});
+    add_instruction(ISA::Operation::GETLOCAL, this->local_symbols[variable.id]);
   } else {
     std::cerr << "Variable not found" << std::endl;
   }
@@ -191,13 +180,10 @@ void Generator::emit_var(const core::Var &variable) {
 void Generator::emit_set(const core::Set &set_op) {
   emit_expr(*set_op.rhs);
   if (this->local_symbols.find(set_op.name) != this->local_symbols.end()) {
-    this->bytecode.push_back(
-        ISA::Instruction{.op = ISA::Operation::SETLOCAL,
-                         .operand = this->local_symbols.at(set_op.name)});
+    add_instruction(ISA::Operation::SETLOCAL, this->local_symbols.at(set_op.name));
   } else if (std::find(this->global_symbols.begin(), this->global_symbols.end(),
                        set_op.name) != this->global_symbols.end()) {
-    this->bytecode.push_back(ISA::Instruction{.op = ISA::Operation::MUTGLOBAL,
-                                              .operand = set_op.name});
+    add_instruction(ISA::Operation::MUTGLOBAL, set_op.name);
   } else {
     std::cerr << "Variable not found for set!" << std::endl;
   }

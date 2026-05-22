@@ -20,6 +20,8 @@ private:
   std::map<core::SymbolId, size_t> local_symbols;
   std::vector<ISA::Instruction> bytecode;
   size_t depth = 0;
+  void add_instruction(ISA::Operation op,
+                       std::optional<uint64_t> operand = std::nullopt);
   void emit_top(const core::Top &top);
   void emit_expr(const core::Expr &expr);
   void emit_top_define(const core::Define &def);
