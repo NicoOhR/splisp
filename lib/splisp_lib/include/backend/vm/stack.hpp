@@ -23,6 +23,7 @@ struct Cell {
   int64_t value;
   bool function = false;
   bool pair = false;
+  bool null = false;
 };
 
 struct CodeEnv {

@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace ast {
-enum Keyword { if_expr, let, letrec, lambda, define, set };
+enum Keyword { if_expr, let, letrec, lambda, define, set, null };
 
 struct SExp;
 

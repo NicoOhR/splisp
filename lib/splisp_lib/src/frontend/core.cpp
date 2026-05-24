@@ -88,6 +88,8 @@ core::Expr core::Lowerer::lower_expr(const ast::SExp &sexp) {
       ret.node = lower_const(sexp);
     } else if (std::get_if<ast::Undef>(&sym->value)) {
       ret.node = lower_undef(sexp);
+    } else if (const auto kw = std::get_if<ast::Keyword>(&sym->value)) {
+      ret.node = Var{.id = 8};
     } else {
       ret.node = lower_var(sexp);
     }

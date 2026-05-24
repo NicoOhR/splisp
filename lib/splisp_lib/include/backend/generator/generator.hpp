@@ -32,11 +32,17 @@ private:
   void emit_const(const core::Const &const_var);
   void emit_set(const core::Set &set_op);
 
+  // function builtins: used by emit_apply — emits args then the opcode
   const std::map<core::SymbolId, ISA::Operation> builtins = {
-      {0, ISA::Operation::ADD},  {1, ISA::Operation::SUB},
-      {2, ISA::Operation::MUL},  {3, ISA::Operation::DIV},
-      {4, ISA::Operation::MOD},  {5, ISA::Operation::CONS},
-      {6, ISA::Operation::CAR},  {7, ISA::Operation::CDR},
+      {0, ISA::Operation::ADD},    {1, ISA::Operation::SUB},
+      {2, ISA::Operation::MUL},    {3, ISA::Operation::DIV},
+      {4, ISA::Operation::MOD},    {5, ISA::Operation::CONS},
+      {6, ISA::Operation::CAR},    {7, ISA::Operation::CDR},
+      {9, ISA::Operation::ISNULL},
+  };
+  // constant builtins: used by emit_var — emits a single no-operand push
+  const std::map<core::SymbolId, ISA::Operation> const_builtins = {
+      {8, ISA::Operation::PUSHNIL},
   };
 };
 

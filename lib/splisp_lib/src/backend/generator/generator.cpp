@@ -166,6 +166,12 @@ void Generator::emit_apply(const core::Apply &application) {
   add_instruction(ISA::Operation::CALL, application.args.size());
 };
 void Generator::emit_var(const core::Var &variable) {
+  // constant builtins (nil etc.) emit a single opcode with no operand
+  if (auto it = this->const_builtins.find(variable.id);
+      it != this->const_builtins.end()) {
+    add_instruction(it->second, std::nullopt);
+    return;
+  }
   if (std::find(this->global_symbols.begin(), this->global_symbols.end(),
                 variable.id) != this->global_symbols.end()) {
     add_instruction(ISA::Operation::LOADGLOBAL, variable.id);
@@ -180,7 +186,8 @@ void Generator::emit_var(const core::Var &variable) {
 void Generator::emit_set(const core::Set &set_op) {
   emit_expr(*set_op.rhs);
   if (this->local_symbols.find(set_op.name) != this->local_symbols.end()) {
-    add_instruction(ISA::Operation::SETLOCAL, this->local_symbols.at(set_op.name));
+    add_instruction(ISA::Operation::SETLOCAL,
+                    this->local_symbols.at(set_op.name));
   } else if (std::find(this->global_symbols.begin(), this->global_symbols.end(),
                        set_op.name) != this->global_symbols.end()) {
     add_instruction(ISA::Operation::MUTGLOBAL, set_op.name);

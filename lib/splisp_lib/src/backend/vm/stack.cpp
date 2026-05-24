@@ -4,14 +4,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <linux/limits.h>
 #include <memory>
 #include <stdexcept>
 
 namespace {
 
 std::shared_ptr<Cell> make_cell(int64_t value, bool function = false,
-                                bool pair = false) {
-  return std::make_shared<Cell>(Cell{value, function, pair});
+                                bool pair = false, bool null = false) {
+  return std::make_shared<Cell>(Cell{value, function, pair, null});
 }
 
 std::shared_ptr<Cell> clone_cell(const Cell &cell) {
@@ -531,6 +532,17 @@ MachineState Stack::handleList(uint8_t op) {
         this->data_stack.push_back(pair->tail);
       }
     }
+    break;
+  }
+  case (ISA::Operation::PUSHNIL): {
+    this->data_stack.push_back(std::make_shared<Cell>(
+        Cell{.value = 0, .function = false, .pair = false, .null = true}));
+    break;
+  }
+  case (ISA::Operation::ISNULL): {
+    auto cell = std::move(this->data_stack.back());
+    this->data_stack.pop_back();
+    this->data_stack.push_back(make_cell(cell->null ? 1 : 0));
     break;
   }
   default:

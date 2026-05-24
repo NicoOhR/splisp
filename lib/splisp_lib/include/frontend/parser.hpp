@@ -30,5 +30,6 @@ private:
   const std::unordered_map<std::string, Keyword> kwords = {
       {"if", Keyword::if_expr},    {"let", Keyword::let},
       {"lambda", Keyword::lambda}, {"define", Keyword::define},
-      {"letrec", Keyword::letrec}, {"set!", Keyword::set}};
+      {"letrec", Keyword::letrec}, {"set!", Keyword::set},
+      {"nil", Keyword::null}};
 };

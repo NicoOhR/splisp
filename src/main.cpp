@@ -10,8 +10,8 @@
 int main() {
   std::string program =
       R"(
-      (let ((p (cons 1 2)))
-        (+ (car p) (cdr p))))";
+    (if (null? (car (cons nil 1))) 2 3)
+  )";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

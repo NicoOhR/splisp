@@ -43,6 +43,8 @@ enum class Operation : uint8_t {
   CONS,
   CAR,
   CDR,
+  PUSHNIL,
+  ISNULL,
 };
 
 enum class OperandKind { NONE, U64, ADD };
@@ -64,7 +66,8 @@ struct Spec {
   std::size_t pushes;
 };
 
-constexpr std::size_t op_count = static_cast<std::size_t>(Operation::CDR) + 1;
+constexpr std::size_t op_count =
+    static_cast<std::size_t>(Operation::ISNULL) + 1;
 inline constexpr std::array<Spec, op_count> spec_list{{
     {"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
     {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
@@ -98,9 +101,11 @@ inline constexpr std::array<Spec, op_count> spec_list{{
     {"enter", OperandKind::U64, OperationKind::CONTROL, 0, 0},
     {"get_local", OperandKind::U64, OperationKind::CONTROL, 0, 1},
     {"set_local", OperandKind::U64, OperationKind::CONTROL, 1, 0},
-    {"cons", OperandKind::NONE, OperationKind::LIST, 2, 1},
-    {"car",  OperandKind::NONE, OperationKind::LIST, 1, 1},
-    {"cdr",  OperandKind::NONE, OperationKind::LIST, 1, 1},
+    {"cons",   OperandKind::NONE, OperationKind::LIST, 2, 1},
+    {"car",    OperandKind::NONE, OperationKind::LIST, 1, 1},
+    {"cdr",    OperandKind::NONE, OperationKind::LIST, 1, 1},
+    {"pushnil",OperandKind::NONE, OperationKind::LIST, 0, 1},
+    {"isnull", OperandKind::NONE, OperationKind::LIST, 1, 1},
 }};
 
 struct Instruction {
