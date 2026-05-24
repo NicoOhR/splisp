@@ -13,7 +13,7 @@ Scoper::Scoper() {
   // create global scope
   root.scope_id = 0;
   root.parent = nullptr;
-  const char *builtins[] = {"+", "-", "*", "/", "%"};
+  const char *builtins[] = {"+", "-", "*", "/", "%", "cons", "car", "cdr"};
   for (const char *name : builtins) {
     root.symbols.emplace(
         name, Binding{.kind = BindingKind::FUNC, .value = next_binding_id++});

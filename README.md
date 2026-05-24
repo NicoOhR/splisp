@@ -1,7 +1,3 @@
-A toy lisp implementation with eyes on compilation and optimization. Features will include:
-* Arithmetic 
-* Lambdas and defuns
-* Let bindings
-* Eval for code in runtime
+A compiled scheme-ish lisp implementation, targeting an unfortunatly custom VM. SECD soon (tm).
 
 

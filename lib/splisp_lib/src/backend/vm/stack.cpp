@@ -9,35 +9,24 @@
 
 namespace {
 
-std::shared_ptr<Cell> make_cell(int64_t value, bool function = false) {
-  return std::make_shared<Cell>(Cell{value, function});
+std::shared_ptr<Cell> make_cell(int64_t value, bool function = false,
+                                bool pair = false) {
+  return std::make_shared<Cell>(Cell{value, function, pair});
 }
 
 std::shared_ptr<Cell> clone_cell(const Cell &cell) {
-  return make_cell(cell.value, cell.function);
+  return std::make_shared<Cell>(cell);
 }
 
 } // namespace
 
-Stack::Stack(std::vector<ISA::Instruction> program, std::vector<uint8_t> data,
-             bool dbg) {
-  std::vector<uint8_t> program_bytes;
+Stack::Stack(std::vector<ISA::Instruction> program, bool dbg) {
   this->dbg = dbg;
-  for (auto instr : program) {
-    auto tmp = instr.to_bytes();
-    program_bytes.insert(program_bytes.end(), tmp.begin(), tmp.end());
-  }
-  this->program_mem.insert(this->program_mem.end(), program_bytes.begin(),
-                           program_bytes.end());
-  this->program_mem.insert(this->program_mem.end(), data.begin(), data.end());
+  this->program_mem = std::move(program);
 };
 
-uint64_t read_operand(const std::vector<uint8_t> &mem, size_t pc) {
-  uint64_t value = 0;
-  for (size_t i = 0; i < 8; ++i) {
-    value |= static_cast<uint64_t>(mem[pc + 1 + i]) << (8 * i);
-  }
-  return value;
+uint64_t read_operand(const std::vector<ISA::Instruction> &instrs, size_t pc) {
+  return instrs[pc / 9].operand.value_or(0);
 }
 
 MachineState Stack::setState(MachineState next) {
@@ -78,14 +67,26 @@ Stack::run_program_dbg(const std::vector<ISA::Instruction> &source) {
     // heap
     std::cerr << "── heap ──\n";
     for (size_t i = 0; i < this->heap.size(); i++) {
-      std::cerr << "  [" << i << "] code_idx=" << this->heap[i].code_idx
-                << " captures=[";
-      for (size_t j = 0; j < this->heap[i].captured_vars.size(); j++) {
-        if (j)
-          std::cerr << ", ";
-        std::cerr << this->heap[i].captured_vars[j]->value;
-      }
-      std::cerr << "]\n";
+      std::visit(
+          [&](const auto &obj) {
+            using T = std::decay_t<decltype(obj)>;
+            if constexpr (std::is_same_v<T, CodeEnv>) {
+              std::cerr << "  [" << i << "] closure code_idx=" << obj.code_idx
+                        << " captures=[";
+              for (size_t j = 0; j < obj.captured_vars.size(); j++) {
+                if (j)
+                  std::cerr << ", ";
+                std::cerr << obj.captured_vars[j]->value;
+              }
+              std::cerr << "]\n";
+            } else if constexpr (std::is_same_v<T, Pair>) {
+              std::cerr << "  [" << i << "] pair head=" << obj.head->value
+                        << (obj.head->pair ? "p" : "")
+                        << " tail=" << obj.tail->value
+                        << (obj.tail->pair ? "p" : "") << "\n";
+            }
+          },
+          this->heap[i]);
     }
     // globals
     std::cerr << "── globals ──\n";
@@ -109,7 +110,8 @@ Stack::run_program_dbg(const std::vector<ISA::Instruction> &source) {
     try {
       this->machine_state = runInstruction();
     } catch (const std::exception &e) {
-      const uint8_t op = this->program_mem[prev_pc];
+      const uint8_t op =
+          static_cast<uint8_t>(this->program_mem[prev_pc / 9].op);
       std::cerr << "runtime error at pc=" << prev_pc
                 << " op=" << ISA::spec_list[op].mnemonic << ": " << e.what()
                 << "\n";
@@ -119,7 +121,7 @@ Stack::run_program_dbg(const std::vector<ISA::Instruction> &source) {
       break;
     if (this->pc == prev_pc)
       this->pc += 9;
-    if (this->pc >= this->program_mem.size()) {
+    if (this->pc >= this->program_mem.size() * 9) {
       print_state();
       return setState(MachineState::HALT);
     }
@@ -134,7 +136,8 @@ MachineState Stack::run_program() {
     try {
       this->machine_state = runInstruction();
     } catch (const std::exception &e) {
-      const uint8_t op = this->program_mem[prev_pc];
+      const uint8_t op =
+          static_cast<uint8_t>(this->program_mem[prev_pc / 9].op);
       const auto &spec = ISA::spec_list[op];
       std::cerr << "runtime error at pc=" << prev_pc << " op=" << spec.mnemonic
                 << ": " << e.what() << "\n";
@@ -147,7 +150,7 @@ MachineState Stack::run_program() {
       break;
     if (this->pc == prev_pc)
       this->pc += 9;
-    if (this->pc >= this->program_mem.size())
+    if (this->pc >= this->program_mem.size() * 9)
       return MachineState::HALT;
     continue;
   }
@@ -155,7 +158,7 @@ MachineState Stack::run_program() {
 }
 
 MachineState Stack::runInstruction() {
-  uint8_t curr = this->program_mem[this->pc];
+  uint8_t curr = static_cast<uint8_t>(this->program_mem[this->pc / 9].op);
   const auto spec = ISA::spec_list[curr];
   if (this->dbg) {
     std::cerr << "pc=" << this->pc << " op=" << spec.mnemonic << " stack=[";
@@ -180,6 +183,9 @@ MachineState Stack::runInstruction() {
   }
   case (ISA::OperationKind::LOGIC): {
     return setState(this->handleLogic(curr));
+  }
+  case (ISA::OperationKind::LIST): {
+    return setState(this->handleList(curr));
   }
   default:
     return setState(MachineState::INVALID_OP);
@@ -365,12 +371,6 @@ MachineState Stack::handleTransfer(uint8_t op) {
     data_stack.push_back(make_cell(operand));
     break;
   }
-  case (ISA::Operation::PICK): {
-    // PICK n: push a copy of the item at depth n (0 = top).
-    data_stack.push_back(
-        clone_cell(*data_stack.at(data_stack.size() - 1 - operand)));
-    break;
-  }
   default:
     throw std::invalid_argument("non-control operation handed to");
   }
@@ -387,11 +387,11 @@ MachineState Stack::handleControl(uint8_t op) {
     const auto heap_idx = this->data_stack.at(handle_idx)->value;
     this->return_stack.push(make_cell(this->pc + 9, false));
     data_stack.erase(this->data_stack.begin() + handle_idx);
-    CodeEnv *env = &this->heap.at(heap_idx);
-    for (size_t i = 0; i < env->captured_vars.size(); ++i) {
-      this->data_stack.push_back(env->captured_vars[i]);
+    CodeEnv &env = std::get<CodeEnv>(this->heap.at(heap_idx));
+    for (size_t i = 0; i < env.captured_vars.size(); ++i) {
+      this->data_stack.push_back(env.captured_vars[i]);
     }
-    this->pc = env->code_idx;
+    this->pc = env.code_idx;
     break;
   }
   case (ISA::Operation::RET): {
@@ -454,8 +454,7 @@ MachineState Stack::handleControl(uint8_t op) {
     //  1. read from the operand the global we'd like to retrieve
     //  2. read from global table and copy it to the stack
     const uint64_t operand = read_operand(this->program_mem, this->pc);
-    this->data_stack.push_back(make_cell(this->global_tbl[operand]->value,
-                                         this->global_tbl[operand]->function));
+    this->data_stack.push_back(this->global_tbl[operand]);
     break;
   }
   case (ISA::Operation::MUTGLOBAL): {
@@ -492,6 +491,51 @@ MachineState Stack::handleControl(uint8_t op) {
   default:
     throw std::invalid_argument(
         "Non-control operation dispatched to control handler");
+  }
+  return setState(MachineState::OKAY);
+}
+
+MachineState Stack::handleList(uint8_t op) {
+  switch (static_cast<ISA::Operation>(op)) {
+  case (ISA::Operation::CONS): {
+    auto tail = this->data_stack.back();
+    this->data_stack.pop_back();
+    auto head = this->data_stack.back();
+    this->data_stack.pop_back();
+    Pair cons = {.head = head, .tail = tail};
+    this->heap.push_back(cons);
+    this->data_stack.push_back(std::make_shared<Cell>(Cell{
+        .value = static_cast<int64_t>(this->heap.size() - 1),
+        .function = false,
+        .pair = true,
+    }));
+    break;
+  }
+  case (ISA::Operation::CAR): {
+    if (!this->data_stack.back()->pair) {
+      this->machine_state = MachineState::INVALID_INSTR;
+    } else {
+      if (auto *pair =
+              std::get_if<Pair>(&this->heap[this->data_stack.back()->value])) {
+        this->data_stack.push_back(pair->head);
+      }
+    }
+    break;
+  }
+  case (ISA::Operation::CDR): {
+    if (!this->data_stack.back()->pair) {
+      this->machine_state = MachineState::INVALID_INSTR;
+    } else {
+      if (auto *pair =
+              std::get_if<Pair>(&this->heap[this->data_stack.back()->value])) {
+        this->data_stack.push_back(pair->tail);
+      }
+    }
+    break;
+  }
+  default:
+    throw std::invalid_argument(
+        "Non-list operation dispatched to list handler");
   }
   return setState(MachineState::OKAY);
 }

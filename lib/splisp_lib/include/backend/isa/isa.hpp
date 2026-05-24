@@ -3,11 +3,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <iterator>
-#include <list>
 #include <optional>
 #include <string>
-#include <unordered_map>
+
 namespace ISA {
 enum class Operation : uint8_t {
   ADD,
@@ -39,10 +37,12 @@ enum class Operation : uint8_t {
   MKGLOBAL,
   LOADGLOBAL,
   MUTGLOBAL,
-  PICK,
   ENTER,
   GETLOCAL,
   SETLOCAL,
+  CONS,
+  CAR,
+  CDR,
 };
 
 enum class OperandKind { NONE, U64, ADD };
@@ -51,6 +51,7 @@ enum class OperationKind {
   LOGIC,
   TRANSFER,
   CONTROL,
+  LIST,
 };
 
 // information about each operation is described by the Spec struct and stored
@@ -63,8 +64,7 @@ struct Spec {
   std::size_t pushes;
 };
 
-constexpr std::size_t op_count =
-    static_cast<std::size_t>(Operation::SETLOCAL) + 1;
+constexpr std::size_t op_count = static_cast<std::size_t>(Operation::CDR) + 1;
 inline constexpr std::array<Spec, op_count> spec_list{{
     {"add", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
     {"sub", OperandKind::NONE, OperationKind::ARITHMETIC, 2, 1},
@@ -95,10 +95,12 @@ inline constexpr std::array<Spec, op_count> spec_list{{
     {"mkglobal", OperandKind::U64, OperationKind::CONTROL, 1, 0},
     {"loadglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0},
     {"mutglobal", OperandKind::U64, OperationKind::CONTROL, 0, 0},
-    {"pick", OperandKind::U64, OperationKind::TRANSFER, 0, 1},
     {"enter", OperandKind::U64, OperationKind::CONTROL, 0, 0},
     {"get_local", OperandKind::U64, OperationKind::CONTROL, 0, 1},
     {"set_local", OperandKind::U64, OperationKind::CONTROL, 1, 0},
+    {"cons", OperandKind::NONE, OperationKind::LIST, 2, 1},
+    {"car",  OperandKind::NONE, OperationKind::LIST, 1, 1},
+    {"cdr",  OperandKind::NONE, OperationKind::LIST, 1, 1},
 }};
 
 struct Instruction {

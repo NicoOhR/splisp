@@ -10,14 +10,8 @@
 int main() {
   std::string program =
       R"(
-          (letrec ((fib (lambda (n)
-                          (if n
-                              (if (- n 1)
-                                  (+ (fib (- n 1)) (fib (- n 2)))
-                                  1)
-                              0))))
-            (fib 10))
-  )";
+      (let ((p (cons 1 2)))
+        (+ (car p) (cdr p))))";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();
@@ -36,7 +30,7 @@ int main() {
   auto bc = gen.generate();
   std::cout << std::endl << "--+--" << std::endl;
   print_bytecode(bc);
-  Stack vm(bc, {0}, true);
+  Stack vm(bc, true);
   vm.run_program();
   // vm.run_program_dbg(bc);
   return 0;

@@ -33,9 +33,10 @@ private:
   void emit_set(const core::Set &set_op);
 
   const std::map<core::SymbolId, ISA::Operation> builtins = {
-      {0, ISA::Operation::ADD}, {1, ISA::Operation::SUB},
-      {2, ISA::Operation::MUL}, {3, ISA::Operation::DIV},
-      {4, ISA::Operation::MOD},
+      {0, ISA::Operation::ADD},  {1, ISA::Operation::SUB},
+      {2, ISA::Operation::MUL},  {3, ISA::Operation::DIV},
+      {4, ISA::Operation::MOD},  {5, ISA::Operation::CONS},
+      {6, ISA::Operation::CAR},  {7, ISA::Operation::CDR},
   };
 };
 

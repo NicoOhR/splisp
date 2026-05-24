@@ -25,7 +25,11 @@ struct StackTestAccess {
   }
   static size_t &pc(Stack &stack) { return stack.pc; }
   static size_t &frame_base(Stack &stack) { return stack.frame_base; }
-  static std::vector<CodeEnv> &heap(Stack &stack) { return stack.heap; }
+  static std::stack<std::size_t, std::vector<std::size_t>> &
+  frame_base_stack(Stack &stack) {
+    return stack.frame_base_stack;
+  }
+  static std::vector<HeapObject> &heap(Stack &stack) { return stack.heap; }
 };
 
 namespace {
@@ -35,8 +39,7 @@ constexpr size_t kInstrSize = 9;
 Stack make_stack(ISA::Operation op, std::optional<uint64_t> operand = {}) {
   ISA::Instruction instr{op, operand};
   std::vector<ISA::Instruction> program{instr};
-  std::vector<uint8_t> data{};
-  return Stack(std::move(program), std::move(data));
+  return Stack(std::move(program));
 }
 
 TEST(StackTests, DispatchArithmeticAdd) {
@@ -144,6 +147,10 @@ TEST(StackTests, DispatchControlRet) {
   auto stack = make_stack(ISA::Operation::RET);
   auto &returns = StackTestAccess::returns(stack);
   returns.push(std::make_shared<Cell>(Cell{4}));
+  // RET also restores frame_base from frame_base_stack (paired with ENTER).
+  // Push a placeholder so the test can exercise return-address restoration
+  // in isolation without triggering UB on an empty stack.
+  StackTestAccess::frame_base_stack(stack).push(0);
 
   auto state = StackTestAccess::runInstruction(stack);
   EXPECT_EQ(state, MachineState::OKAY);
@@ -159,7 +166,7 @@ TEST(StackTests, DispatchControlMkClosureCapturesFrameSlotsBySharing) {
       {ISA::Operation::ENTER, 2},
       {ISA::Operation::MKCLOSURE, 999},
   };
-  Stack stack(std::move(program), std::vector<uint8_t>{}, true);
+  Stack stack(std::move(program), true);
   auto &data = StackTestAccess::data(stack);
   data.push_back(std::make_shared<Cell>(Cell{4}));
   data.push_back(std::make_shared<Cell>(Cell{6}));
@@ -176,10 +183,11 @@ TEST(StackTests, DispatchControlMkClosureCapturesFrameSlotsBySharing) {
 
   auto &heap = StackTestAccess::heap(stack);
   ASSERT_EQ(heap.size(), 1U);
-  EXPECT_EQ(heap[0].code_idx, 999U);
-  ASSERT_EQ(heap[0].captured_vars.size(), 2U);
-  EXPECT_EQ(heap[0].captured_vars[0].get(), ptr0); // shared, not cloned
-  EXPECT_EQ(heap[0].captured_vars[1].get(), ptr1);
+  auto &env0 = std::get<CodeEnv>(heap[0]);
+  EXPECT_EQ(env0.code_idx, 999U);
+  ASSERT_EQ(env0.captured_vars.size(), 2U);
+  EXPECT_EQ(env0.captured_vars[0].get(), ptr0); // shared, not cloned
+  EXPECT_EQ(env0.captured_vars[1].get(), ptr1);
 }
 
 TEST(StackTests, DispatchControlMkClosureCallRestoresSharedCapturesInOrder) {
@@ -189,7 +197,7 @@ TEST(StackTests, DispatchControlMkClosureCallRestoresSharedCapturesInOrder) {
       {ISA::Operation::MKCLOSURE, 123},
       {ISA::Operation::CALL, 0},
   };
-  Stack stack(std::move(program), std::vector<uint8_t>{});
+  Stack stack(std::move(program));
   auto &data = StackTestAccess::data(stack);
   data.push_back(std::make_shared<Cell>(Cell{4}));
   data.push_back(std::make_shared<Cell>(Cell{6}));
@@ -285,7 +293,7 @@ TEST(StackTests, DispatchControlGetLocalPushesCloneAtFrameOffset) {
       {ISA::Operation::ENTER, 3},
       {ISA::Operation::GETLOCAL, 1},
   };
-  Stack stack(std::move(program), std::vector<uint8_t>{});
+  Stack stack(std::move(program));
 
   auto &data = StackTestAccess::data(stack);
   data.push_back(std::make_shared<Cell>(Cell{10}));
@@ -314,7 +322,7 @@ TEST(StackTests, DispatchControlSetLocalMutatesInPlace) {
       {ISA::Operation::ENTER, 3},
       {ISA::Operation::SETLOCAL, 1},
   };
-  Stack stack(std::move(program), std::vector<uint8_t>{});
+  Stack stack(std::move(program));
 
   auto &data = StackTestAccess::data(stack);
   data.push_back(std::make_shared<Cell>(Cell{10}));
@@ -345,7 +353,7 @@ TEST(StackTests, DispatchControlCallPopsHandleAndPushesReturnAddress) {
       {ISA::Operation::MKCLOSURE, 77},
       {ISA::Operation::CALL, 0},
   };
-  Stack stack(std::move(program), std::vector<uint8_t>{});
+  Stack stack(std::move(program));
   auto &data = StackTestAccess::data(stack);
   auto &returns = StackTestAccess::returns(stack);
 
@@ -382,7 +390,7 @@ TEST(StackTests, DispatchControlCallRetRoundtrip) {
       {ISA::Operation::CALL, 0},  {ISA::Operation::HALT, std::nullopt},
       {ISA::Operation::ENTER, 0}, {ISA::Operation::RET, std::nullopt},
   };
-  Stack stack(std::move(program), std::vector<uint8_t>{});
+  Stack stack(std::move(program));
   auto &returns = StackTestAccess::returns(stack);
 
   StackTestAccess::runInstruction(stack); // ENTER 0 at byte 0
@@ -413,7 +421,7 @@ TEST(StackTests, DispatchControlSetLocalMutationVisibleThroughSharedCapture) {
       {ISA::Operation::MKCLOSURE, 999},
       {ISA::Operation::SETLOCAL, 0},
   };
-  Stack stack(std::move(program), std::vector<uint8_t>{});
+  Stack stack(std::move(program));
   auto &data = StackTestAccess::data(stack);
   data.push_back(std::make_shared<Cell>(Cell{0})); // undef placeholder
 
@@ -424,7 +432,8 @@ TEST(StackTests, DispatchControlSetLocalMutationVisibleThroughSharedCapture) {
       stack); // MKCLOSURE 999: captures slot 0 by sharing
   auto &heap = StackTestAccess::heap(stack);
   ASSERT_EQ(heap.size(), 1U);
-  EXPECT_EQ(heap[0].captured_vars[0]->value, 0U); // still undef at capture time
+  auto &env0 = std::get<CodeEnv>(heap[0]);
+  EXPECT_EQ(env0.captured_vars[0]->value, 0U); // still undef at capture time
   StackTestAccess::pc(stack) += kInstrSize;
 
   data.push_back(std::make_shared<Cell>(Cell{42}));
@@ -432,7 +441,7 @@ TEST(StackTests, DispatchControlSetLocalMutationVisibleThroughSharedCapture) {
       stack); // SET_LOCAL 0: mutates slot 0 in place
 
   // The closure's captured Cell sees the mutation — this is what enables letrec
-  EXPECT_EQ(heap[0].captured_vars[0]->value, 42U);
+  EXPECT_EQ(env0.captured_vars[0]->value, 42U);
 }
 
 } // namespace

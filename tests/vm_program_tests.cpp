@@ -36,8 +36,7 @@ TEST(StackProgramTests, ConditionalJump) {
       {ISA::Operation::HALT, std::nullopt},
   };
 
-  std::vector<uint8_t> data{};
-  Stack stack(std::move(program), std::move(data));
+  Stack stack(std::move(program));
   MachineState state = MachineState::OKAY;
   for (size_t i = 0; i < 100; ++i) {
     const auto prev_pc = StackTestAccess::pc(stack);
