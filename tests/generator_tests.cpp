@@ -31,7 +31,6 @@ core::Expr var_expr(core::SymbolId id) {
   return core::Expr{.node = core::Var{id}};
 }
 
-
 bool has_op(const std::vector<ISA::Instruction> &bc, ISA::Operation op) {
   return std::any_of(bc.begin(), bc.end(),
                      [op](const ISA::Instruction &i) { return i.op == op; });
@@ -87,8 +86,8 @@ TEST(GeneratorTests, EmitTopDefineConstPushThenMkglobal) {
 TEST(GeneratorTests, EmitVarGlobalEmitsLoadglobal) {
   core::Program prog;
   prog.emplace_back(core::Define{
-      .name = 8, .rhs = std::make_unique<core::Expr>(const_expr(10))});
-  prog.emplace_back(var_expr(8));
+      .name = 10, .rhs = std::make_unique<core::Expr>(const_expr(10))});
+  prog.emplace_back(var_expr(10));
   core::print_program(prog);
   Generator gen(prog);
   gen.generate();
@@ -96,7 +95,7 @@ TEST(GeneratorTests, EmitVarGlobalEmitsLoadglobal) {
   print_bytecode(bc);
 
   EXPECT_TRUE(std::any_of(bc.begin(), bc.end(), [](const ISA::Instruction &i) {
-    return i.op == ISA::Operation::LOADGLOBAL && i.operand == 8;
+    return i.op == ISA::Operation::LOADGLOBAL && i.operand == 10;
   }));
 }
 
@@ -164,11 +163,11 @@ TEST(GeneratorTests, EmitApplyUserFuncEmitsArgsThenLoadglobalThenCall) {
 
   core::Program prog;
   prog.emplace_back(core::Define{
-      .name = 9,
+      .name = 10,
       .rhs = std::make_unique<core::Expr>(core::Expr{.node = std::move(lam)})});
 
   core::Apply call;
-  call.callee = std::make_unique<core::Expr>(var_expr(9));
+  call.callee = std::make_unique<core::Expr>(var_expr(10));
   call.args.push_back(std::make_unique<core::Expr>(const_expr(42)));
   prog.emplace_back(core::Expr{.node = std::move(call)});
 
@@ -182,7 +181,7 @@ TEST(GeneratorTests, EmitApplyUserFuncEmitsArgsThenLoadglobalThenCall) {
 
   auto loadglobal_it =
       std::find_if(bc.begin(), bc.end(), [](const ISA::Instruction &i) {
-        return i.op == ISA::Operation::LOADGLOBAL && i.operand == 9;
+        return i.op == ISA::Operation::LOADGLOBAL && i.operand == 10;
       });
   auto call_it =
       std::find_if(bc.begin(), bc.end(), [](const ISA::Instruction &i) {

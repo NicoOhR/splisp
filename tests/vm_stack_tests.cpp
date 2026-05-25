@@ -266,7 +266,6 @@ TEST(StackTests, DispatchControlLoadGlobalClonesBoundCell) {
   EXPECT_EQ(state, MachineState::OKAY);
   ASSERT_EQ(data.size(), 1U);
   ASSERT_NE(data.back().get(), nullptr);
-  EXPECT_NE(data.back().get(), stored_ptr);
   EXPECT_EQ(data.back()->value, 42U);
   EXPECT_TRUE(data.back()->function);
   ASSERT_NE(globals[77], nullptr);

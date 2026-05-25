@@ -16,7 +16,8 @@ struct Binding {
   uint64_t value;
 };
 
-const std::array<std::string, 8> builtin = {"+", "-", "*", "/", "%", "cons", "car", "cdr"};
+const std::array<std::string, 10> builtin = {
+    "+", "-", "*", "/", "%", "cons", "car", "cdr", "nil", "null?"};
 
 struct SymbolTable {
   size_t scope_id;

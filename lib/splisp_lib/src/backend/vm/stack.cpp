@@ -518,6 +518,7 @@ MachineState Stack::handleList(uint8_t op) {
     } else {
       if (auto *pair =
               std::get_if<Pair>(&this->heap[this->data_stack.back()->value])) {
+        this->data_stack.pop_back();
         this->data_stack.push_back(pair->head);
       }
     }
@@ -529,6 +530,7 @@ MachineState Stack::handleList(uint8_t op) {
     } else {
       if (auto *pair =
               std::get_if<Pair>(&this->heap[this->data_stack.back()->value])) {
+        this->data_stack.pop_back();
         this->data_stack.push_back(pair->tail);
       }
     }

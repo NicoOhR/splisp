@@ -10,8 +10,8 @@
 int main() {
   std::string program =
       R"(
-    (if (null? (car (cons nil 1))) 2 3)
-  )";
+      (let ((p (cons 2 2)))
+      (+ (car p) (cdr p))))";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();
@@ -30,6 +30,7 @@ int main() {
   auto bc = gen.generate();
   std::cout << std::endl << "--+--" << std::endl;
   print_bytecode(bc);
+  std::cout << std::endl << "--+--" << std::endl;
   Stack vm(bc, true);
   vm.run_program();
   // vm.run_program_dbg(bc);
