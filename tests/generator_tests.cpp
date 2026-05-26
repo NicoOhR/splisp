@@ -157,17 +157,21 @@ TEST(GeneratorTests, BuiltinOpsMapToCorrectInstructions) {
 }
 
 TEST(GeneratorTests, EmitApplyUserFuncEmitsArgsThenLoadglobalThenCall) {
+  // Use symbol IDs >= 15 to avoid colliding with the builtin range (0–14).
+  constexpr core::SymbolId kFuncId = 20;
+  constexpr core::SymbolId kFormalId = 30;
+
   core::Lambda lam;
-  lam.formals.push_back(std::make_unique<core::SymbolId>(20));
-  lam.body.push_back(std::make_unique<core::Expr>(var_expr(20)));
+  lam.formals.push_back(std::make_unique<core::SymbolId>(kFormalId));
+  lam.body.push_back(std::make_unique<core::Expr>(var_expr(kFormalId)));
 
   core::Program prog;
   prog.emplace_back(core::Define{
-      .name = 10,
+      .name = kFuncId,
       .rhs = std::make_unique<core::Expr>(core::Expr{.node = std::move(lam)})});
 
   core::Apply call;
-  call.callee = std::make_unique<core::Expr>(var_expr(10));
+  call.callee = std::make_unique<core::Expr>(var_expr(kFuncId));
   call.args.push_back(std::make_unique<core::Expr>(const_expr(42)));
   prog.emplace_back(core::Expr{.node = std::move(call)});
 
@@ -180,8 +184,8 @@ TEST(GeneratorTests, EmitApplyUserFuncEmitsArgsThenLoadglobalThenCall) {
   EXPECT_TRUE(has_push(bc, 42));
 
   auto loadglobal_it =
-      std::find_if(bc.begin(), bc.end(), [](const ISA::Instruction &i) {
-        return i.op == ISA::Operation::LOADGLOBAL && i.operand == 10;
+      std::find_if(bc.begin(), bc.end(), [kFuncId](const ISA::Instruction &i) {
+        return i.op == ISA::Operation::LOADGLOBAL && i.operand == kFuncId;
       });
   auto call_it =
       std::find_if(bc.begin(), bc.end(), [](const ISA::Instruction &i) {

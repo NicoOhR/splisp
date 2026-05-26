@@ -101,10 +101,10 @@ inline constexpr std::array<Spec, op_count> spec_list{{
     {"enter", OperandKind::U64, OperationKind::CONTROL, 0, 0},
     {"get_local", OperandKind::U64, OperationKind::CONTROL, 0, 1},
     {"set_local", OperandKind::U64, OperationKind::CONTROL, 1, 0},
-    {"cons",   OperandKind::NONE, OperationKind::LIST, 2, 1},
-    {"car",    OperandKind::NONE, OperationKind::LIST, 1, 1},
-    {"cdr",    OperandKind::NONE, OperationKind::LIST, 1, 1},
-    {"pushnil",OperandKind::NONE, OperationKind::LIST, 0, 1},
+    {"cons", OperandKind::NONE, OperationKind::LIST, 2, 1},
+    {"car", OperandKind::NONE, OperationKind::LIST, 1, 1},
+    {"cdr", OperandKind::NONE, OperationKind::LIST, 1, 1},
+    {"pushnil", OperandKind::NONE, OperationKind::LIST, 0, 1},
     {"isnull", OperandKind::NONE, OperationKind::LIST, 1, 1},
 }};
 

@@ -8,10 +8,21 @@
 #include <string>
 
 int main() {
-  std::string program =
-      R"(
-      (let ((p (cons 2 2)))
-      (+ (car p) (cdr p))))";
+  // std::string program =
+  //     R"(
+  //     (letrec
+  //       ((build (lambda (n)
+  //                 (if (eq n 0)
+  //                     nil
+  //                     (cons n (build (- n 1))))))
+  //        (sum (lambda (lst)
+  //               (if (null? lst)
+  //                   0
+  //                   (+ (car lst) (sum (cdr lst)))))))
+  //       (sum (build 5))))";
+  std::string program = R"(
+      (if (< 1 2) 0 1)
+  )";
   Lexer lex(program);
   Parser parser(std::move(lex));
   auto ast = parser.parse();

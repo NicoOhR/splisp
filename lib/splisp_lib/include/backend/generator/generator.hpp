@@ -39,6 +39,11 @@ private:
       {4, ISA::Operation::MOD},    {5, ISA::Operation::CONS},
       {6, ISA::Operation::CAR},    {7, ISA::Operation::CDR},
       {9, ISA::Operation::ISNULL},
+      {10, ISA::Operation::EQ},
+      {11, ISA::Operation::LT},
+      {12, ISA::Operation::LE},
+      {13, ISA::Operation::GE},
+      {14, ISA::Operation::GT},
   };
   // constant builtins: used by emit_var — emits a single no-operand push
   const std::map<core::SymbolId, ISA::Operation> const_builtins = {
