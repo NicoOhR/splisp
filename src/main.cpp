@@ -21,7 +21,12 @@ int main() {
   //                   (+ (car lst) (sum (cdr lst)))))))
   //       (sum (build 5))))";
   std::string program = R"(
-      (if (< 1 2) 0 1)
+    (define f (lambda (x)
+      (+ x 1) 
+      (* x 2)
+    ))
+    (f 5)
+
   )";
   Lexer lex(program);
   Parser parser(std::move(lex));

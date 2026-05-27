@@ -130,9 +130,12 @@ void Generator::emit_lambda(const core::Lambda &lambda) {
   add_instruction(ISA::Operation::JMP, std::nullopt);
   const auto enter_offset = this->bytecode.size() * 9;
   add_instruction(ISA::Operation::ENTER, n);
-  for (auto &&expr : lambda.body) {
+  for (size_t i = 0; i < lambda.body.size() - 1; i++) {
+    auto &&expr = lambda.body.at(i);
     Generator::emit_expr(*expr);
+    add_instruction(ISA::Operation::DROP, 1);
   }
+  Generator::emit_expr(*lambda.body.back());
   // rotate the result down to the bottom of the frame and drop the scratch
   // variables that it calculates
   add_instruction(ISA::Operation::NROT, n + 1);
