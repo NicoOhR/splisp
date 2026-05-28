@@ -8,24 +8,19 @@
 #include <string>
 
 int main() {
-  // std::string program =
-  //     R"(
-  //     (letrec
-  //       ((build (lambda (n)
-  //                 (if (eq n 0)
-  //                     nil
-  //                     (cons n (build (- n 1))))))
-  //        (sum (lambda (lst)
-  //               (if (null? lst)
-  //                   0
-  //                   (+ (car lst) (sum (cdr lst)))))))
-  //       (sum (build 5))))";
   std::string program = R"(
-    (define f (lambda (x)
-      (+ x 1) 
-      (* x 2)
-    ))
-    (f 5)
+  (define make-adder
+    (lambda (n)
+      (lambda (x) (+ x n))))
+
+  (define sum-to
+    (lambda (n)
+      (if (eq n 0)
+          0
+          (+ n (sum-to (- n 1))))))
+
+  (define add-fifteen (make-adder (sum-to 5)))
+  (add-fifteen 1)
 
   )";
   Lexer lex(program);
